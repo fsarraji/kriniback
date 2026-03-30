@@ -1,0 +1,37 @@
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView
+
+from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet # استدعاء لوحة القيادة
+from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet
+from clients.views import ClientViewSet
+from contracts.views import ContractViewSet
+from payments.views import PaymentViewSet
+from expenses.views import ExpenseViewSet
+
+router = DefaultRouter()
+router.register(r'agencies', AgencyViewSet, basename='agency')
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'vehicles', VehicleViewSet, basename='vehicle')
+router.register(r'brands', BrandViewSet, basename='brand')
+router.register(r'modelcars', ModelCarViewSet, basename='modelcar')
+router.register(r'clients', ClientViewSet, basename='client')
+router.register(r'contracts', ContractViewSet, basename='contract')
+router.register(r'payments', PaymentViewSet, basename='payment')
+router.register(r'expenses', ExpenseViewSet, basename='expense')
+router.register(r'public-vehicles', PublicVehicleViewSet, basename='public-vehicle')
+
+urlpatterns =[
+    path('admin/', admin.site.urls),
+    
+    # مسارات الـ API الأساسية
+    path('api/', include(router.urls)),
+    
+    # مسارات تسجيل الدخول (JWT)
+    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
+    # مسار الإحصائيات (Dashboard)
+    path('api/dashboard/', DashboardStatsView.as_view(), name='dashboard_stats'),
+]

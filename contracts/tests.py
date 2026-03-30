@@ -1,0 +1,81 @@
+from django.db import models
+from agency.models import Agency, CustomUser
+from fleet.models import Vehicle
+from clients.models import Client
+from django.utils import timezone
+
+class Contract(models.Model):
+    # حالات العقد
+    STATUS_CHOICES =[
+        ('RESERVE', 'محجوزة مسبقاً'),
+        ('EN_COURS', 'في طور الكراء (جارية)'),
+        ('TERMINE', 'منتهية (تم إرجاع السيارة)'),
+        ('ANNULE', 'ملغاة'),
+    ]
+
+    # مستويات الوقود
+    FUEL_LEVELS =[
+        ('0', 'فارغ'),
+        ('1/4', 'الربع'),
+        ('1/2', 'النصف'),
+        ('3/4', 'ثلاثة أرباع'),
+        ('1', 'ممتلئ'),
+    ]
+
+    # 1. روابط الـ Multi-Agency والمستخدمين
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='contracts')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name="الموظف الذي أنشأ العقد")
+    
+    # 2. أطراف العقد (السيارة والزبون)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='contracts', verbose_name="السيارة")
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='contracts', verbose_name="الزبون المكتري")
+    deuxieme_chauffeur = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, blank=True, related_name='contracts_as_second', verbose_name="السائق الثاني")
+
+    # 3. التواريخ والمدة
+    date_sortie = models.DateTimeField(default=timezone.now, verbose_name="تاريخ ووقت التسليم")
+    date_retour_prevue = models.DateTimeField(verbose_name="تاريخ ووقت الإرجاع المتوقع")
+    date_retour_effective = models.DateTimeField(null=True, blank=True, verbose_name="تاريخ الإرجاع الفعلي") # يتم ملؤه عند إرجاع السيارة
+    jours = models.IntegerField(default=1, verbose_name="عدد الأيام")
+
+    # 4. الحالة عند التسليم (Livraison)
+    km_sortie = models.IntegerField(verbose_name="الكيلومتراج عند الخروج")
+    carburant_sortie = models.CharField(max_length=10, choices=FUEL_LEVELS, default='1/4', verbose_name="الوقود عند الخروج")
+    
+    # 5. الحالة عند الإرجاع (Réception)
+    km_retour = models.IntegerField(null=True, blank=True, verbose_name="الكيلومتراج عند الإرجاع")
+    carburant_retour = models.CharField(max_length=10, choices=FUEL_LEVELS, null=True, blank=True, verbose_name="الوقود عند الإرجاع")
+    degats_retour = models.TextField(null=True, blank=True, verbose_name="ملاحظات/أضرار عند الإرجاع")
+
+    # 6. الحسابات المالية (Finance)
+    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="ثمن الكراء اليومي المتفق عليه")
+    montant_total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="المبلغ الإجمالي")
+    montant_paye = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="المبلغ المدفوع (التسبيق)")
+    reste_a_payer = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="المبلغ المتبقي")
+    caution = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="مبلغ الضمانة (Caution)")
+    methode_paiement = models.CharField(max_length=50, default="Espèce", verbose_name="طريقة الدفع") # Espèce, Chèque, TPE, Virement
+
+    # 7. حالة العقد
+    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='EN_COURS', verbose_name="حالة العقد")
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # 1. حساب المبلغ الإجمالي والمتبقي تلقائياً قبل حفظ العقد
+        if self.prix_par_jour and self.jours:
+            self.montant_total = self.prix_par_jour * self.jours
+            self.reste_a_payer = self.montant_total - self.montant_paye
+            
+        # 2. تحديث الكيلومتراج الخاص بالسيارة إذا تم إرجاعها
+        if self.statut == 'TERMINE' and self.km_retour:
+            self.vehicle.kilometrage = self.km_retour
+            self.vehicle.statut = 'Available'
+            self.vehicle.save()
+            
+        # 3. تحديث حالة السيارة إذا كانت في طور الكراء
+        elif self.statut == 'EN_COURS':
+            self.vehicle.statut = 'Rented'
+            self.vehicle.save()
+
+        super(Contract, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f"عقد رقم {self.id} - {self.client.nom} - {self.vehicle.matricule}"

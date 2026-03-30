@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>CONTRAT DE LOCATION - {{ contract.id }}</title>
+    <style>
+        @page { size: A4; margin: 1cm 1cm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10px;
+            color: #1e293b;
+            line-height: 1.4;
+            background: #fff;
+        }
+
+        /* ─── HEADER ─── */
+        .hdr { width:100%; border-collapse:collapse; padding-bottom:6px; margin-bottom:6px; border-bottom:2px solid #0A3278; }
+        .hdr td { border:none; vertical-align:middle; padding:0; }
+        .agency-name { font-size:22px; font-weight:bold; color:#0A3278; text-transform:uppercase; }
+        .agency-sub  { font-size:8.5px; color:#64748b; margin-top:2px; line-height:1.4; }
+        .badge-num   { font-size:18px; font-weight:bold; color:#0A3278; text-align:right; }
+        .badge-meta  { font-size:8.5px; color:#64748b; text-align:right; margin-top:3px; }
+
+        /* ─── SECTION TITLE ─── */
+        .sec {
+            background-color: #f1f5f9;
+            border-left: 4px solid #0A3278;
+            padding: 4px 10px;
+            font-size: 9.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #0A3278;
+            margin-top: 8px;
+            margin-bottom: 2px;
+        }
+
+        /* ─── GENERIC GRID ─── */
+        .grid { width:100%; border-collapse:collapse; margin-bottom: 2px; }
+        .grid td { border:1px solid #e2e8f0; padding:4px 6px; vertical-align:middle; line-height: 1.2; }
+        .gl {
+            width:22%;
+            font-size:8.5px;
+            font-weight:bold;
+            color:#64748b;
+            background-color:#f8fafc;
+        }
+        .gv {
+            width:28%;
+            font-size:10px;
+            font-weight:bold;
+            color:#0f172a;
+        }
+
+        /* ─── SPLIT PANEL ─── */
+        .split { width:100%; border-collapse:collapse; margin-top:4px; margin-bottom: 2px; }
+        .split td { vertical-align:top; border:1px solid #e2e8f0; padding:0; }
+        .panel-hdr {
+            background-color:#0A3278;
+            color:#fff;
+            font-size:8.5px;
+            font-weight:bold;
+            text-transform:uppercase;
+            padding:4px 8px;
+        }
+
+        /* ─── CHRONO ROWS ─── */
+        .chrono { width:100%; border-collapse:collapse; }
+        .chrono td { border:none; padding:4px 8px; vertical-align:middle; }
+        .c-row { border-bottom:1px solid #f1f5f9; }
+        .c-title { font-size:8.5px; font-weight:bold; color:#0A3278; margin-bottom:2px; text-transform:uppercase; }
+        .c-info  { font-size:9.5px; margin-bottom:1px; }
+        .c-km    { font-size:12px; font-weight:bold; color:#0f172a; }
+
+        /* ─── ACCESSORIES ─── */
+        .acc { width:100%; border-collapse:collapse; }
+        .acc th { background-color:#f8fafc; font-size:8.5px; font-weight:bold; color:#64748b; text-align:center; padding:4px 4px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; }
+        .acc td { padding:6px 6px; font-size:9.5px; border-bottom:1px solid #f1f5f9; border-right:1px solid #e2e8f0; vertical-align:middle; line-height: 1.4; height: 18px; }
+        .acc td.cnt { text-align:center; }
+        .yes { color:#16a34a; font-weight:bold; font-size:12px; }
+        .no  { color:#94a3b8; font-size:10px; }
+
+        /* ─── DAMAGE SECTION ─── */
+        .dmg { width:100%; border-collapse:collapse; margin-bottom: 2px; }
+        .dmg td { width:50%; vertical-align:top; padding:6px 8px; border:1px solid #e2e8f0; }
+        .dmg-title { font-size:8.5px; font-weight:bold; color:#0A3278; text-transform:uppercase; margin-bottom:4px; }
+        .dmg-img { text-align:center; padding: 2px; }
+        .dmg-obs { font-size:8.5px; color:#64748b; margin-top:4px; padding-top:3px; border-top:1px dashed #e2e8f0; }
+
+        /* ─── FINANCE ─── */
+        .fin { width:100%; border-collapse:collapse; }
+        .fin td { border:1px solid #e2e8f0; padding:6px; text-align:center; vertical-align:middle; line-height: 1.2; }
+        .fin .fh { background-color:#0A3278; color:#fff; font-size:8.5px; font-weight:bold; text-transform:uppercase; }
+        .fin .fv { font-size:11px; font-weight:bold; color:#0f172a; }
+        .fin .fv.grn { color:#16a34a; }
+        .fin .fv.red { color:#dc2626; }
+        
+        .caution { background-color:#f8fafc; text-align:center; padding:5px; font-size:9px; font-weight:bold; border:1px solid #e2e8f0; border-top:none; color:#0A3278; margin-bottom: 2px; }
+
+        /* ─── CONDITIONS ─── */
+        .cond { font-size:8.5px; color:#64748b; line-height:1.4; padding:4px 0; border-top:1px solid #e2e8f0; }
+
+        /* ─── SIGNATURES ─── */
+        .sigs { width:100%; border-collapse:collapse; margin-top:6px; }
+        .sigs td { vertical-align:top; width:50%; padding:0 15px 0 0; }
+        /* Reset padding for the right column using an inline style since xhtml2pdf pseudo selectors are buggy */
+        .sig-role { font-size:9px; font-weight:bold; color:#1e293b; margin-bottom:2px; }
+        .sig-note { font-size:8px; color:#94a3b8; font-style:italic; margin-bottom:10px; }
+        .sig-line { border-bottom:1px solid #94a3b8; height:35px; }
+
+        /* ─── FOOTER ─── */
+        .ftr { font-size:7.5px; color:#94a3b8; text-align:center; margin-top:6px; border-top:1px solid #f1f5f9; padding-top:4px; }
+        
+        /* Helper for 2nd row columns if we can't use colgroup */
+        .w20 { width: 20%; }
+        .w30 { width: 30%; }
+    </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<table class="hdr">
+    <tr>
+        <td style="width:60%">
+            <div class="agency-name">{{ agency.nom_agence }}</div>
+            <div class="agency-sub">
+                {{ agency.adresse }}<br>
+                Tél : {{ agency.telephone }} &nbsp;·&nbsp; RC : {{ agency.rc|default:"—" }} &nbsp;·&nbsp; ICE : {{ agency.ice|default:"—" }}
+            </div>
+        </td>
+        <td style="width:40%; text-align: right;">
+            <div class="badge-num">CONTRAT N° {{ contract.id|stringformat:"04d" }}</div>
+            <div class="badge-meta">
+                Émis le {{ contract.date_creation|date:"d/m/Y" }}<br>
+                Agent : {{ contract.created_by.get_full_name|default:contract.created_by.username }}
+            </div>
+        </td>
+    </tr>
+</table>
+
+<!-- ═══ CONDUCTEUR ═══ -->
+<div class="sec">Conducteur Principal</div>
+<table class="grid">
+    <tr>
+        <td class="gl w20">Nom / Raison Sociale</td>
+        <td class="gv" colspan="3">{{ contract.client.nom }} {{ contract.client.prenom }}</td>
+    </tr>
+    <tr>
+        <td class="gl w20">Nationalité</td>
+        <td class="gv w30">{{ contract.client.nationalite|default:"Marocaine" }}</td>
+        <td class="gl w20">Téléphone</td>
+        <td class="gv w30">{{ contract.client.telephone }}</td>
+    </tr>
+    <tr>
+        <td class="gl w20">N° CIN / Passport</td>
+        <td class="gv w30">{{ contract.client.cin_passport }}</td>
+        <td class="gl w20">Date d'expiration</td>
+        <td class="gv w30">{{ contract.client.date_expiration_cin|date:"d/m/Y"|default:"—" }}</td>
+    </tr>
+    <tr>
+        <td class="gl w20">N° Permis</td>
+        <td class="gv w30">{{ contract.client.permis_conduite }}</td>
+        <td class="gl w20">Date d'obtention</td>
+        <td class="gv w30">{{ contract.client.date_delivrance_permis|date:"d/m/Y"|default:"—" }}</td>
+    </tr>
+    <tr>
+        <td class="gl w20">Adresse</td>
+        <td class="gv" colspan="3" style="font-weight:normal;">{{ contract.client.adresse }}</td>
+    </tr>
+    {% if contract.deuxieme_chauffeur %}
+    <tr>
+        <td class="gl w20" style="border-left:3px solid #94a3b8; background-color:#e2e8f0; color:#1e293b;">2ème Conducteur</td>
+        <td class="gv" colspan="3" style="background-color:#f8fafc;">{{ contract.deuxieme_chauffeur.nom }} {{ contract.deuxieme_chauffeur.prenom }}</td>
+    </tr>
+    <tr style="background-color:#f8fafc;">
+        <td class="gl w20" style="border-left:3px solid #94a3b8;">Nationalité</td>
+        <td class="gv w30">{{ contract.deuxieme_chauffeur.nationalite|default:"Marocaine" }}</td>
+        <td class="gl w20">Téléphone</td>
+        <td class="gv w30">{{ contract.deuxieme_chauffeur.telephone }}</td>
+    </tr>
+    <tr style="background-color:#f8fafc;">
+        <td class="gl w20" style="border-left:3px solid #94a3b8;">N° CIN / Passport</td>
+        <td class="gv w30">{{ contract.deuxieme_chauffeur.cin_passport }}</td>
+        <td class="gl w20">Date d'expiration</td>
+        <td class="gv w30">{{ contract.deuxieme_chauffeur.date_expiration_cin|date:"d/m/Y"|default:"—" }}</td>
+    </tr>
+    <tr style="background-color:#f8fafc;">
+        <td class="gl w20" style="border-left:3px solid #94a3b8;">N° Permis</td>
+        <td class="gv w30">{{ contract.deuxieme_chauffeur.permis_conduite }}</td>
+        <td class="gl w20">Date d'obtention</td>
+        <td class="gv w30">{{ contract.deuxieme_chauffeur.date_delivrance_permis|date:"d/m/Y"|default:"—" }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+<!-- ═══ VÉHICULE ═══ -->
+<div class="sec">Véhicule</div>
+<table class="grid">
+    <tr>
+        <td class="gl w20">Marque / Modèle</td>
+        <td class="gv w30">{{ contract.vehicle.marque }} {{ contract.vehicle.modele }} ({{ contract.vehicle.annee }})</td>
+        <td class="gl w20">Matricule</td>
+        <td class="gv w30" style="font-family:monospace; font-size:12px; letter-spacing:.5px;">{{ contract.vehicle.matricule }}</td>
+    </tr>
+    <tr>
+        <td class="gl w20">Couleur</td>
+        <td class="gv w30">{{ contract.vehicle.couleur }}</td>
+        <td class="gl w20">Type Carburant</td>
+        <td class="gv w30">{{ contract.vehicle.get_carburant_display }}</td>
+    </tr>
+</table>
+
+<!-- ═══ DÉPART/RETOUR + ACCESSOIRES ═══ -->
+<table class="split">
+    <tr>
+        <!-- LEFT : Kilométrage & Carburant -->
+        <td style="width:53%; padding-bottom: 4px;">
+            <div class="panel-hdr">Kilométrage &amp; Carburant</div>
+            <table class="chrono">
+                <tr class="c-row">
+                    <td style="width: 60%; vertical-align: middle; padding-top: 8px; padding-bottom: 8px;">
+                        <div style="margin-left: 15px;">
+                            <div class="c-title" style="font-size:9.5px;">⬆ Départ</div>
+                            <div class="c-info" style="font-size:10px;">Date : <strong>{{ contract.date_sortie|date:"d/m/Y H:i" }}</strong></div>
+                            <div class="c-info" style="margin-top:4px; font-size:10px;">KMS :</div>
+                            <div class="c-km" style="font-size:13px;">{{ contract.km_sortie }}</div>
+                        </div>
+                    </td>
+                    <td style="width: 40%; text-align:center; vertical-align: middle; padding-top: 8px; padding-bottom: 8px;">
+                        <div style="font-size:8.5px; color:#94a3b8; margin-bottom:6px;">Niveau Carburant</div>
+                        {% if fuel_depart_base64 %}<img src="{{ fuel_depart_base64 }}" style="width:80px;" />{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 60%; vertical-align: middle; padding-top: 8px; padding-bottom: 8px;">
+                        <div style="margin-left: 15px;">
+                            <div class="c-title" style="font-size:9.5px;">⬇ Retour</div>
+                            <div class="c-info" style="font-size:10px;">
+                                Date : <strong>{% if contract.date_retour_effective %}{{ contract.date_retour_effective|date:"d/m/Y H:i" }}{% else %}{{ contract.date_retour_prevue|date:"d/m/Y H:i" }} <span style="font-weight:normal; color:#94a3b8;">(prévu)</span>{% endif %}</strong>
+                            </div>
+                            <div class="c-info" style="margin-top:4px; font-size:10px;">KMS :</div>
+                            <div class="c-km" style="font-size:13px;">{% if contract.km_retour %}{{ contract.km_retour }}{% else %}________{% endif %}</div>
+                            {% if km_parcourus %}<div style="font-size:8.5px; color:#64748b; margin-top:2px;">(+ {{ km_parcourus }} kms)</div>{% endif %}
+                        </div>
+                    </td>
+                    <td style="width: 40%; text-align:center; vertical-align: middle; padding-top: 8px; padding-bottom: 8px;">
+                        <div style="font-size:8.5px; color:#94a3b8; margin-bottom:6px;">Niveau Carburant</div>
+                        {% if fuel_retour_base64 %}
+                            <img src="{{ fuel_retour_base64 }}" style="width:80px;" />
+                        {% else %}
+                            <div style="height:45px; border:1px dashed #e2e8f0; line-height:45px; text-align:center; color:#cbd5e1; font-size:8.5px; margin: 0 auto; width: 75px;">À noter</div>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </td>
+
+        <!-- RIGHT : Accessoires -->
+        <td style="width:47%; border-left:none;">
+            <div class="panel-hdr" style="background-color:#475569;">Équipements — D/R</div>
+            <table class="acc">
+                <tr>
+                    <th style="width:55%; text-align:left;">Accessoire</th>
+                    <th style="width:22.5%;">Départ</th>
+                    <th style="width:22.5%; border-right:none;">Retour</th>
+                </tr>
+                <tr>
+                    <td>Roue de secours</td>
+                    <td class="cnt">{% if contract.roue_secours %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                    <td class="cnt" style="border-right:none;">{% if contract.roue_secours_retour %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td>Cric &amp; Manivelle</td>
+                    <td class="cnt">{% if contract.cric %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                    <td class="cnt" style="border-right:none;">{% if contract.cric_retour %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td>Gilet &amp; Triangle</td>
+                    <td class="cnt">{% if contract.gilet %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                    <td class="cnt" style="border-right:none;">{% if contract.gilet_retour %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td>Extincteur</td>
+                    <td class="cnt">{% if contract.extincteur %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                    <td class="cnt" style="border-right:none;">{% if contract.extincteur_retour %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td>Papiers du véhicule</td>
+                    <td class="cnt">{% if contract.papiers %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                    <td class="cnt" style="border-right:none;">{% if contract.papiers_retour %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td style="border-bottom:none;">Double des clés</td>
+                    <td class="cnt" style="border-bottom:none;">{% if contract.cles %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                    <td class="cnt" style="border-right:none; border-bottom:none;">{% if contract.cles_retour %}<span class="yes">✔</span>{% else %}<span class="no">—</span>{% endif %}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<!-- ═══ SCHÉMA DÉGÂTS ═══ -->
+<div class="sec">État du Véhicule — Schéma des Dégâts</div>
+<table class="dmg">
+    <tr>
+        <td style="border-right:1px dashed #e2e8f0;">
+            <div class="dmg-title">⬆ Constat au Départ</div>
+            <div class="dmg-img">
+                {% if car_diagram_base64 %}<img src="{{ car_diagram_base64 }}" style="width:130px;" />{% endif %}
+            </div>
+            <div class="dmg-obs"><strong>Obs :</strong> {{ contract.degats_depart|default:"Aucun dégât constaté." }}</div>
+        </td>
+        <td style="border-left:none;">
+            <div class="dmg-title">⬇ Constat au Retour</div>
+            <div class="dmg-img">
+                {% if retour_diagram_base64 %}<img src="{{ retour_diagram_base64 }}" style="width:130px;" />{% endif %}
+            </div>
+            <div class="dmg-obs"><strong>Obs :</strong> {{ contract.degats_retour|default:"À compléter à la réception." }}</div>
+        </td>
+    </tr>
+</table>
+
+<!-- ═══ FINANCE ═══ -->
+<div class="sec">Récapitulatif Financier</div>
+<table class="fin">
+    <tr>
+        <td class="fh" style="width:15%;">Durée</td>
+        <td class="fh" style="width:20%;">Tarif / Jour</td>
+        <td class="fh" style="width:22%;">Montant Total</td>
+        <td class="fh" style="width:21%;">Montant Payé</td>
+        <td class="fh" style="width:22%;">Reste à Payer</td>
+    </tr>
+    <tr>
+        <td>{{ contract.jours }} j</td>
+        <td>{{ contract.prix_par_jour|floatformat:2 }} DH</td>
+        <td class="fv">{{ contract.montant_total|floatformat:2 }} DH</td>
+        <td class="fv grn">{{ contract.montant_paye|floatformat:2 }} DH</td>
+        <td class="fv red">{{ contract.reste_a_payer|floatformat:2 }} DH</td>
+    </tr>
+</table>
+<div class="caution">CAUTION / DÉPÔT : {{ contract.caution|floatformat:2 }} DH &nbsp;·&nbsp; Mode : {{ contract.methode_paiement }}</div>
+
+<!-- ═══ CONDITIONS ═══ -->
+<div class="cond">
+    <strong>Engagement :</strong> Le locataire certifie avoir pris connaissance des conditions générales et accepte de restituer le véhicule dans l'état de réception à la date convenue. Tout dégât non signalé au départ sera imputé au locataire. Sortie du territoire interdite sans accord écrit préalable.{% if contract.notes %} &nbsp;·&nbsp; <strong>Note :</strong> {{ contract.notes|truncatechars:150 }}{% endif %}
+</div>
+
+<!-- ═══ SIGNATURES ═══ -->
+<table class="sigs">
+    <tr>
+        <td>
+            <div class="sig-role">Signature du Locataire</div>
+            <div class="sig-note">Lu et approuvé — Je reconnais avoir reçu le véhicule en bon état de fonctionnement.</div>
+            <div class="sig-line"></div>
+        </td>
+        <td style="padding:0 0 0 20px;">
+            <div class="sig-role" style="text-align:right;">Cachet &amp; Signature de l'Agence</div>
+            <div class="sig-note" style="text-align:right;">Remis par l'agent responsable</div>
+            <div class="sig-line"></div>
+        </td>
+    </tr>
+</table>
+
+<div class="ftr">Document généré par LocaCar · {{ now|date:"d/m/Y à H:i" }} · Contrat N°{{ contract.id|stringformat:"04d" }}</div>
+
+</body>
+</html>

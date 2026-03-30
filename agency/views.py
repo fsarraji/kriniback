@@ -1,0 +1,129 @@
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import Sum
+
+from fleet.models import Vehicle
+from contracts.models import Contract
+from clients.models import Client
+from .models import Agency, CustomUser
+from rest_framework import serializers, viewsets
+from rest_framework.permissions import IsAdminUser
+
+class AgencySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Agency
+        fields = '__all__'
+
+class UserSerializer(serializers.ModelSerializer):
+    agency_name = serializers.ReadOnlyField(source='agency.nom_agence')
+    
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'agency', 'agency_name', 'is_active', 'password']
+        extra_kwargs = {'password': {'write_only': True, 'required': False}}
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+
+class AgencyViewSet(viewsets.ModelViewSet):
+    queryset = Agency.objects.all()
+    serializer_class = AgencySerializer
+    permission_classes = [IsAdminUser]
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+
+class DashboardStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        agency = request.user.agency
+        today = timezone.now().date()
+        thirty_days_later = today + timedelta(days=30)
+
+        # Base querysets
+        vehicles_qs = Vehicle.objects.all()
+        contracts_qs = Contract.objects.all()
+        clients_qs = Client.objects.all()
+
+        # Filter by agency if not a superadmin
+        if agency:
+            vehicles_qs = vehicles_qs.filter(agency=agency)
+            contracts_qs = contracts_qs.filter(agency=agency)
+            clients_qs = clients_qs.filter(agency=agency)
+        elif not request.user.is_superuser:
+            # If no agency and not superuser, return nothing (safety)
+            vehicles_qs = vehicles_qs.none()
+            contracts_qs = contracts_qs.none()
+            clients_qs = clients_qs.none()
+
+        # 1. إحصائيات عامة
+        total_vehicles = vehicles_qs.count()
+        available_vehicles = vehicles_qs.filter(statut='Available').count()
+        rented_vehicles = vehicles_qs.filter(statut='Rented').count()
+        active_contracts = contracts_qs.filter(statut='EN_COURS').count()
+        total_clients = clients_qs.count()
+
+        # 2. المداخيل الإجمالية (هذا الشهر كمثال)
+        current_month = timezone.now().month
+        revenue = contracts_qs.filter(
+            date_creation__month=current_month
+        ).aggregate(Sum('montant_total'))['montant_total__sum'] or 0
+
+        # 3. التنبيهات (Alerts) - السيارات التي سينتهي تأمينها أو فحصها التقني قريباً (أقل من 30 يوم)
+        insurance_alerts = vehicles_qs.filter(
+            date_assurance__lte=thirty_days_later
+        ).values('id', 'matricule', 'marque', 'date_assurance')
+
+        visite_alerts = vehicles_qs.filter(
+            date_visite_technique__lte=thirty_days_later
+        ).values('id', 'matricule', 'marque', 'date_visite_technique')
+
+        # 4. العقود الأخيرة (آخر 5)
+        recent_contracts = contracts_qs.order_by('-date_creation')[:5].values(
+            'id', 'client__nom', 'client__prenom', 'vehicle__marque', 'vehicle__modele', 'vehicle__matricule', 'jours', 'montant_total', 'statut'
+        )
+
+        # إرجاع البيانات على شكل JSON منظم
+        return Response({
+            'stats': {
+                'total_vehicles': total_vehicles,
+                'available_vehicles': available_vehicles,
+                'rented_vehicles': rented_vehicles,
+                'active_contracts': active_contracts,
+                'total_clients': total_clients,
+                'revenue_this_month': revenue,
+                'agency_name': agency.nom_agence if agency else "Super Admin"
+            },
+            'alerts': {
+                'insurance_expiring': list(insurance_alerts),
+                'visite_expiring': list(visite_alerts)
+            },
+            'recent_contracts': list(recent_contracts)
+        })
