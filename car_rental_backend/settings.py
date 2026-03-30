@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-*yw43y0h-djudg-s3k(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['krini.onrender.com', 'localhost', '127.0.0.1', '.vercel.app']
 
 
 # Application definition
