@@ -159,3 +159,14 @@ test_output.txt
 test_pdf.pdf
 test_pdf.py
 base1_modeles.csv
+*.sql
+*.json
+vehicles_images/
+*.py.bak
+test_db_*.py
+scan_supabase_regions.py
+import_to_supabase.py
+regen_data.py
+debug_sql.py
+db_test_result.txt
+debug_output.txt

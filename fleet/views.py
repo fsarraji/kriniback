@@ -23,7 +23,11 @@ class VehicleViewSet(viewsets.ModelViewSet):
         return Vehicle.objects.filter(agency=self.request.user.agency)
 
     def perform_create(self, serializer):
-        serializer.save(agency=self.request.user.agency)
+        agency = self.request.user.agency
+        if not agency:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "Votre compte n'est lié à aucune agence. Veuillez contacter l'administrateur."})
+        serializer.save(agency=agency)
 
     @action(detail=False, methods=['get'])
     def available_cars(self, request):

@@ -1,0 +1,361 @@
+﻿python : System check 
+identified some 
+issues:
+Au caractère Ligne:1 
+: 1
++ python manage.py 
+loaddata 
+contracts.json -v 2 
+2>&1 | Out-File 
+-FilePa ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (System che   
+ ck identified som    
+e issues::String)     
+[], RemoteExcept    
+ion
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+
+WARNINGS:
+agency.Agency: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the AgencyC
+onfig.default_auto_fie
+ld attribute to point 
+to a subclass of 
+AutoField, e.g. 'djang
+o.db.models.BigAutoFie
+ld'.
+agency.CustomUser: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the AgencyC
+onfig.default_auto_fie
+ld attribute to point 
+to a subclass of 
+AutoField, e.g. 'djang
+o.db.models.BigAutoFie
+ld'.
+clients.Client: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the Clients
+Config.default_auto_fi
+eld attribute to 
+point to a subclass 
+of AutoField, e.g. 'dj
+ango.db.models.BigAuto
+Field'.
+contracts.Contract: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the Contrac
+tsConfig.default_auto_
+field attribute to 
+point to a subclass 
+of AutoField, e.g. 'dj
+ango.db.models.BigAuto
+Field'.
+contracts.ContractDama
+ge: (models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the Contrac
+tsConfig.default_auto_
+field attribute to 
+point to a subclass 
+of AutoField, e.g. 'dj
+ango.db.models.BigAuto
+Field'.
+expenses.Expense: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the Expense
+sConfig.default_auto_f
+ield attribute to 
+point to a subclass 
+of AutoField, e.g. 'dj
+ango.db.models.BigAuto
+Field'.
+fleet.Brand: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the FleetCo
+nfig.default_auto_fiel
+d attribute to point 
+to a subclass of 
+AutoField, e.g. 'djang
+o.db.models.BigAutoFie
+ld'.
+fleet.ModelCar: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the FleetCo
+nfig.default_auto_fiel
+d attribute to point 
+to a subclass of 
+AutoField, e.g. 'djang
+o.db.models.BigAutoFie
+ld'.
+fleet.Vehicle: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the FleetCo
+nfig.default_auto_fiel
+d attribute to point 
+to a subclass of 
+AutoField, e.g. 'djang
+o.db.models.BigAutoFie
+ld'.
+payments.Payment: 
+(models.W042) 
+Auto-created primary 
+key used when not 
+defining a primary 
+key type, by default '
+django.db.models.AutoF
+ield'.
+	HINT: Configure the 
+DEFAULT_AUTO_FIELD 
+setting or the Payment
+sConfig.default_auto_f
+ield attribute to 
+point to a subclass 
+of AutoField, e.g. 'dj
+ango.db.models.BigAuto
+Field'.
+Loading 'contracts' fixtures...
+Checking 'D:\location' for fixtures...
+Installing json fixture 'contracts' from 'D:\location'.
+Traceback (most 
+recent call last):
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\serializers\jso
+n.py", line 71, in 
+__init__
+    objects = json.loa
+ds(stream_or_string)
+              ^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\json\__init__.py", 
+line 346, in loads
+    return _default_de
+coder.decode(s)
+           ^^^^^^^^^^^
+^^^^^^^^^^^^^^^
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\json\decoder.py", 
+line 337, in decode
+    obj, end = 
+self.raw_decode(s, 
+idx=_w(s, 0).end())
+               ^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\json\decoder.py", 
+line 355, in 
+raw_decode
+    raise JSONDecodeEr
+ror("Expecting 
+value", s, err.value) 
+from None
+json.decoder.JSONDecod
+eError: Expecting 
+value: line 250 
+column 20 (char 6259)
+
+The above exception 
+was the direct cause 
+of the following 
+exception:
+
+Traceback (most 
+recent call last):
+  File "D:\location\ma
+nage.py", line 22, in 
+<module>
+    main()
+  File "D:\location\ma
+nage.py", line 18, in 
+main
+    execute_from_comma
+nd_line(sys.argv)
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\__in
+it__.py", line 442, 
+in execute_from_comman
+d_line
+    utility.execute()
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\__in
+it__.py", line 436, 
+in execute
+    self.fetch_command
+(subcommand).run_from_
+argv(self.argv)
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\base
+.py", line 420, in 
+run_from_argv
+    
+self.execute(*args, 
+**cmd_options)
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\base
+.py", line 464, in 
+execute
+    output = 
+self.handle(*args, 
+**options)
+             ^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\comm
+ands\loaddata.py", 
+line 103, in handle
+    self.loaddata(fixt
+ure_labels)
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\comm
+ands\loaddata.py", 
+line 164, in loaddata
+    self.load_label(fi
+xture_label)
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\management\comm
+ands\loaddata.py", 
+line 244, in 
+load_label
+    objects = serializ
+ers.deserialize(
+              ^^^^^^^^
+^^^^^^^^^^^^^^^^
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\serializers\__i
+nit__.py", line 146, 
+in deserialize
+    return 
+d(stream_or_string, 
+**options)
+           ^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rtyui
+op\AppData\Local\Progr
+ams\Python\Python312\L
+ib\site-packages\djang
+o\core\serializers\jso
+n.py", line 73, in 
+__init__
+    raise Deserializat
+ionError() from exc
+django.core.serializer
+s.base.Deserialization
+Error: Problem 
+installing fixture 'D:
+\location\contracts.js
+on': 

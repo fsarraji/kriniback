@@ -5,7 +5,7 @@ from agency.models import Agency
 class SimpleAgencySerializer(serializers.ModelSerializer):
     class Meta:
         model = Agency
-        fields = ['id', 'name', 'address', 'phone']
+        fields = ['id', 'nom_agence', 'adresse', 'telephone']
 
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
