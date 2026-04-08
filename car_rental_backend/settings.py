@@ -86,8 +86,18 @@ WSGI_APPLICATION = 'car_rental_backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+import dj_database_url
+
 DATABASES = {
-    'default': {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
+
+if not DATABASES['default']:
+    DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'postgres',
         'USER': 'postgres.gojkevxwwoimalftpuzg',
@@ -95,7 +105,6 @@ DATABASES = {
         'HOST': 'aws-1-eu-central-1.pooler.supabase.com',
         'PORT': '6543',
     }
-}
 
 
 # Password validation
