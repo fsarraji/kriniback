@@ -86,25 +86,36 @@ WSGI_APPLICATION = 'car_rental_backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-import dj_database_url
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
-
-if not DATABASES['default']:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.gojkevxwwoimalftpuzg',
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': 'aws-1-eu-central-1.pooler.supabase.com',
-        'PORT': '6543',
+try:
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
+except ImportError:
+    DATABASES = {'default': None}
+
+if not DATABASES.get('default'):
+    # Check if we have Supabase credentials
+    db_pass = os.getenv('DB_PASSWORD')
+    if db_pass:
+        DATABASES['default'] = {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'postgres',
+            'USER': 'postgres.gojkevxwwoimalftpuzg',
+            'PASSWORD': db_pass,
+            'HOST': 'aws-1-eu-central-1.pooler.supabase.com',
+            'PORT': '6543',
+        }
+    else:
+        # Fallback to local SQLite if no remote DB is configured
+        DATABASES['default'] = {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
 
 
 # Password validation
