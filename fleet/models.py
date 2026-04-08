@@ -1,21 +1,21 @@
 from django.db import models
-from agency.models import Agency # استدعاء نموذج الوكالة
+from agency.models import Agency
 
 
 class Brand(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name="اسم العلامة التجارية")
+    name = models.CharField(max_length=100, unique=True, verbose_name="Nom de la marque")
     
     def __str__(self):
         return self.name
 
 class ModelCar(models.Model):
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='models', verbose_name="العلامة التجارية")
-    name = models.CharField(max_length=100, verbose_name="اسم الموديل")
+    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='models', verbose_name="Marque")
+    name = models.CharField(max_length=100, verbose_name="Nom du modèle")
     
     class Meta:
         unique_together = ('brand', 'name')
-        verbose_name = "موديل السيارة"
-        verbose_name_plural = "موديلات السيارات"
+        verbose_name = "Modèle de voiture"
+        verbose_name_plural = "Modèles de voitures"
 
     def __str__(self):
         return f"{self.brand.name} {self.name}"
@@ -23,35 +23,33 @@ class ModelCar(models.Model):
 
 class Vehicle(models.Model):
     FUEL_CHOICES =[
-        ('Diesel', 'ديزل'),
-        ('Essence', 'بنزين'),
-        ('Hybride', 'هجين'),
-        ('Electrique', 'كهربائي'),
+        ('Diesel', 'Diesel'),
+        ('Essence', 'Essence'),
+        ('Hybride', 'Hybride'),
+        ('Electrique', 'Electrique'),
     ]
     
     STATUS_CHOICES =[
-        ('Available', 'متاحة'),
-        ('Rented', 'مكتراة'),
-        ('Maintenance', 'في الصيانة'),
+        ('Available', 'Disponible'),
+        ('Rented', 'Loué'),
+        ('Maintenance', 'En maintenance'),
     ]
     agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='vehicles')
-    matricule = models.CharField(max_length=20, unique=True, verbose_name="رقم الترقيم") # مثال: 12345-A-50
-    marque = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, verbose_name="العلامة التجارية") 
-    modele = models.ForeignKey(ModelCar, on_delete=models.SET_NULL, null=True, verbose_name="الموديل")
-    annee = models.IntegerField(verbose_name="سنة الصنع")
-    couleur = models.CharField(max_length=30, verbose_name="اللون")
-    carburant = models.CharField(max_length=20, choices=FUEL_CHOICES, verbose_name="نوع الوقود")
-    kilometrage = models.IntegerField(verbose_name="الكيلومترات الحالية")
-    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="ثمن الكراء اليومي")
-    chauffeur_disponible = models.BooleanField(default=False, verbose_name="سائق متوفر")
-    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Available', verbose_name="حالة السيارة")
+    matricule = models.CharField(max_length=20, unique=True, verbose_name="Matricule")
+    marque = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, verbose_name="Marque") 
+    modele = models.ForeignKey(ModelCar, on_delete=models.SET_NULL, null=True, verbose_name="Modèle")
+    annee = models.IntegerField(verbose_name="Année")
+    couleur = models.CharField(max_length=30, verbose_name="Couleur")
+    carburant = models.CharField(max_length=20, choices=FUEL_CHOICES, verbose_name="Carburant")
+    kilometrage = models.IntegerField(verbose_name="Kilométrage")
+    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Prix par jour")
+    chauffeur_disponible = models.BooleanField(default=False, verbose_name="Chauffeur disponible")
+    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Available', verbose_name="Statut")
     
-    # التواريخ الهامة للتنبيهات (التي كانت تظهر بالأحمر والأخضر في الفيديو)
-    date_assurance = models.DateField(verbose_name="تاريخ انتهاء التأمين")
-    date_visite_technique = models.DateField(verbose_name="تاريخ انتهاء الفحص التقني")
-    prochain_vidange_km = models.IntegerField(verbose_name="الكيلومتراج القادم لتغيير الزيت")
+    date_assurance = models.DateField(verbose_name="Date assurance")
+    date_visite_technique = models.DateField(verbose_name="Date visite technique")
+    prochain_vidange_km = models.IntegerField(verbose_name="Prochain vidange (km)")
     
-    # صورة السيارة
     image = models.ImageField(upload_to='vehicles_images/', null=True, blank=True)
 
     def __str__(self):
