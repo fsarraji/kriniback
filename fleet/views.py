@@ -35,13 +35,13 @@ class VehicleViewSet(viewsets.ModelViewSet):
         end_date_str = request.query_params.get('end_date')
 
         if not start_date_str or not end_date_str:
-            return Response({"detail": "المرجوا تحديد تاريخ البداية والنهاية (start_date, end_date)"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Veuillez préciser la date de début et la date de fin (start_date, end_date)."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             start_date = datetime.fromisoformat(start_date_str)
             end_date = datetime.fromisoformat(end_date_str)
         except ValueError:
-            return Response({"detail": "صيغة التاريخ غير صحيحة، استخدم: YYYY-MM-DDTHH:MM"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Format de date invalide, utilisez : YYYY-MM-DDTHH:MM"}, status=status.HTTP_400_BAD_REQUEST)
 
         agency = request.user.agency
         contract_filters = {

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Contract, ContractDamage
+from django.db.models import Q
 
 class ContractDamageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,6 +15,7 @@ class ContractSerializer(serializers.ModelSerializer):
     client_initials = serializers.SerializerMethodField()
     vehicle_name = serializers.SerializerMethodField()
     vehicle_matricule = serializers.CharField(source='vehicle.matricule', read_only=True)
+    vehicle_tarif_km_extra = serializers.DecimalField(source='vehicle.tarif_km_extra', max_digits=6, decimal_places=2, read_only=True, allow_null=True)
     formatted_dates = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
 
@@ -24,10 +26,76 @@ class ContractSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         damages_data = validated_data.pop('damages', [])
+        
+        # 1. Extraire les informations de paiement initiales
+        montant_paye = validated_data.pop('montant_paye', 0)
+        methode_paiement = validated_data.get('methode_paiement', 'Espèce')
+        
+        # 2. Forcer le montant initial à 0 pour éviter le double comptage
+        # car le modèle Payment mettra à jour ce montant via son save()
+        validated_data['montant_paye'] = 0
+        
         contract = super().create(validated_data)
+        
+        # 3. Sauvegarder les dommages
         for damage_data in damages_data:
             ContractDamage.objects.create(contract=contract, **damage_data)
+            
+        # 4. Créer la trace du paiement si une avance a été versée
+        if montant_paye > 0:
+            from payments.models import Payment
+            Payment.objects.create(
+                agency=contract.agency,
+                contract=contract,
+                user=contract.created_by,
+                amount=montant_paye,
+                payment_method=methode_paiement,
+                notes="Avance initiale (Création)"
+            )
+            
         return contract
+
+    def update(self, instance, validated_data):
+        damages_data = validated_data.pop('damages', None)
+        instance = super().update(instance, validated_data)
+        
+        if damages_data is not None:
+            for damage_data in damages_data:
+                # Assuming damages sent during update are additive or replace existing ones?
+                # For Activation, we just create the DEPART damages.
+                ContractDamage.objects.create(contract=instance, **damage_data)
+                
+        return instance
+
+    def validate(self, data):
+        vehicle = data.get('vehicle')
+        # If updating, use existing data if not provided
+        if self.instance and not vehicle:
+            vehicle = self.instance.vehicle
+            
+        date_sortie = data.get('date_sortie')
+        if self.instance and not date_sortie:
+            date_sortie = self.instance.date_sortie
+            
+        date_retour_prevue = data.get('date_retour_prevue')
+        if self.instance and not date_retour_prevue:
+            date_retour_prevue = self.instance.date_retour_prevue
+
+        if vehicle and date_sortie and date_retour_prevue:
+            # Check for overlapping contracts (EN_COURS or RESERVE)
+            overlapping = Contract.objects.filter(
+                vehicle=vehicle,
+                statut__in=['EN_COURS', 'RESERVE'],
+                date_sortie__lt=date_retour_prevue,
+                date_retour_prevue__gt=date_sortie
+            )
+            if self.instance:
+                overlapping = overlapping.exclude(pk=self.instance.pk)
+                
+            if overlapping.exists():
+                raise serializers.ValidationError("Ce véhicule est déjà loué ou réservé pour la période sélectionnée.")
+
+        return data
 
     def get_client_initials(self, obj):
         return f"{obj.client.nom[0]}{obj.client.prenom[0]}"

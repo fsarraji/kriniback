@@ -1,6 +1,6 @@
 from django.http import HttpResponse
 from django.template.loader import get_template
-from xhtml2pdf import pisa
+from weasyprint import HTML
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,6 +12,9 @@ from django.conf import settings
 from PIL import Image, ImageDraw, ImageFont
 import math
 from io import BytesIO
+import qrcode
+import barcode
+from barcode.writer import ImageWriter
 from .models import Contract, ContractDamage
 from .serializers import ContractSerializer
 
@@ -196,6 +199,12 @@ class ContractViewSet(viewsets.ModelViewSet):
         contract.statut = 'TERMINE'
         contract.save()
 
+        # ✅ Remettre le véhicule en disponible
+        vehicle = contract.vehicle
+        vehicle.statut = 'Available'
+        vehicle.kilometrage = km_retour_int  # Mettre à jour le kilométrage du véhicule
+        vehicle.save()
+
         return Response({
             'detail': 'تم إغلاق العقد وإرجاع السيارة بنجاح.',
             'reste_a_payer': str(contract.reste_a_payer),
@@ -250,7 +259,57 @@ class ContractViewSet(viewsets.ModelViewSet):
         fuel_depart_base64 = generate_fuel_gauge_image(contract.carburant_sortie)
         fuel_retour_base64 = generate_fuel_gauge_image(contract.carburant_retour)
 
+        # Generate WhatsApp QR code
+        whatsapp_qr_base64 = ""
+        if agency.telephone:
+            phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
+            if phone.startswith('0'):
+                phone = '212' + phone[1:]
+            elif phone.startswith('+'):
+                phone = phone[1:]
+            
+            if phone:
+                wa_link = f"https://wa.me/{phone}"
+                try:
+                    qr = qrcode.QRCode(version=1, box_size=10, border=1)
+                    qr.add_data(wa_link)
+                    qr.make(fit=True)
+                    qr_img = qr.make_image(fill_color="#111827", back_color="white")
+                    qr_buf = BytesIO()
+                    qr_img.save(qr_buf, format="PNG")
+                    qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
+                    whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
+                except Exception as e:
+                    print("Error generating QR code:", e)
+
+        # Generate Barcode for Contract ID
+        contract_barcode_base64 = ""
+        try:
+            # Format ID as 4 digits (e.g. 0042)
+            code_str = str(contract.id).zfill(4)
+            COD128 = barcode.get_barcode_class('code128')
+            # Create barcode WITHOUT text at the bottom (we already display it in the PDF)
+            bar = COD128(code_str, writer=ImageWriter())
+            bar_buf = BytesIO()
+            # Reducing module_height from 10.0 to 5.0 for a slimmer look
+            bar.write(bar_buf, options={"write_text": False, "module_height": 5.0, "module_width": 0.25})
+            bar_b64 = base64.b64encode(bar_buf.getvalue()).decode('utf-8')
+            contract_barcode_base64 = f"data:image/png;base64,{bar_b64}"
+        except Exception as e:
+            print("Error generating barcode:", e)
+
         km_parcourus = contract.km_retour - contract.km_sortie if contract.km_retour else None
+
+        # Paramètres kilométrage de l'agence
+        agency_km_extra_active = agency.km_extra_active
+        agency_km_par_jour = agency.km_par_jour
+        km_tarif_extra = float(contract.vehicle.tarif_km_extra or agency.km_tarif_extra_defaut or 1.5)
+        km_inclus_total = (agency_km_par_jour * contract.jours) if agency_km_extra_active else None
+        km_supplementaires = None
+        montant_km_extra = None
+        if agency_km_extra_active and km_parcourus is not None and km_inclus_total is not None:
+            km_supplementaires = max(0, km_parcourus - km_inclus_total)
+            montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
 
         context = {
             'contract': contract,
@@ -261,7 +320,16 @@ class ContractViewSet(viewsets.ModelViewSet):
             'retour_damages': retour_damages,
             'fuel_depart_base64': fuel_depart_base64,
             'fuel_retour_base64': fuel_retour_base64,
+            'whatsapp_qr_base64': whatsapp_qr_base64,
+            'contract_barcode_base64': contract_barcode_base64,
             'km_parcourus': km_parcourus,
+            # Km overage
+            'agency_km_extra_active': agency_km_extra_active,
+            'agency_km_par_jour': agency_km_par_jour,
+            'km_tarif_extra': km_tarif_extra,
+            'km_inclus_total': km_inclus_total,
+            'km_supplementaires': km_supplementaires,
+            'montant_km_extra': montant_km_extra,
         }
 
         # 4. إعداد الـ HTTP Response ليكون من نوع PDF
@@ -274,11 +342,60 @@ class ContractViewSet(viewsets.ModelViewSet):
         template = get_template(template_path)
         html = template.render(context)
 
-        # 6. تحويل الـ HTML إلى PDF باستخدام xhtml2pdf
-        pisa_status = pisa.CreatePDF(html, dest=response)
-
-        # التحقق من وجود أخطاء
-        if pisa_status.err:
-            return Response('عذراً، حدث خطأ أثناء توليد ملف الـ PDF', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # 6. تحويل الـ HTML إلى PDF باستخدام WeasyPrint
+        try:
+            # WeasyPrint needs a base_url to resolve relative paths (like images/CSS if any)
+            pdf_file = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
+            response.write(pdf_file)
+        except Exception as e:
+            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return response    
+
+    @action(detail=True, methods=['get'])
+    def print_reservation_receipt(self, request, pk=None):
+        contract = self.get_object()
+        agency = request.user.agency
+        template_path = 'contracts/reservation_receipt_pdf.html'
+
+        # Generate WhatsApp QR code
+        whatsapp_qr_base64 = ""
+        if agency.telephone:
+            phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
+            if phone.startswith('0'):
+                phone = '212' + phone[1:]
+            elif phone.startswith('+'):
+                phone = phone[1:]
+            if phone:
+                wa_link = f"https://wa.me/{phone}"
+                try:
+                    qr = qrcode.QRCode(version=1, box_size=10, border=1)
+                    qr.add_data(wa_link)
+                    qr.make(fit=True)
+                    qr_img = qr.make_image(fill_color="#111827", back_color="white")
+                    qr_buf = BytesIO()
+                    qr_img.save(qr_buf, format="PNG")
+                    qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
+                    whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
+                except Exception as e:
+                    print("Error generating QR code:", e)
+
+        context = {
+            'contract': contract,
+            'agency': agency,
+            'whatsapp_qr_base64': whatsapp_qr_base64,
+        }
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="Recu_Reservation_{contract.id}.pdf"'
+
+        template = get_template(template_path)
+        html = template.render(context)
+
+        try:
+            pdf_file = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
+            response.write(pdf_file)
+        except Exception as e:
+            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return response

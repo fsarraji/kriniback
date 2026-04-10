@@ -127,3 +127,63 @@ class DashboardStatsView(APIView):
             },
             'recent_contracts': list(recent_contracts)
         })
+
+class AgencySettingsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.agency:
+            return Response({"error": "No agency attached"}, status=400)
+        agency = request.user.agency
+        return Response({
+            "caution_active": agency.caution_active,
+            "caution_montant": str(agency.caution_montant),
+            "km_extra_active": agency.km_extra_active,
+            "km_par_jour": agency.km_par_jour,
+            "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
+        })
+
+    def put(self, request):
+        if not request.user.agency:
+            return Response({"error": "No agency attached"}, status=400)
+        
+        # Only owner or superadmin can modify
+        if request.user.role != 'OWNER' and not request.user.is_superuser:
+            return Response({"error": "Permission denied. Only Owner can modify settings."}, status=403)
+            
+        agency = request.user.agency
+        
+        if 'caution_active' in request.data:
+            agency.caution_active = str(request.data['caution_active']).lower() in ['true', '1', 't', 'y', 'yes']
+            
+        if 'caution_montant' in request.data:
+            try:
+                agency.caution_montant = float(request.data['caution_montant'])
+            except ValueError:
+                pass
+
+        if 'km_extra_active' in request.data:
+            agency.km_extra_active = str(request.data['km_extra_active']).lower() in ['true', '1', 't', 'y', 'yes']
+
+        if 'km_par_jour' in request.data:
+            try:
+                agency.km_par_jour = int(request.data['km_par_jour'])
+            except (ValueError, TypeError):
+                pass
+
+        if 'km_tarif_extra_defaut' in request.data:
+            try:
+                agency.km_tarif_extra_defaut = float(request.data['km_tarif_extra_defaut'])
+            except (ValueError, TypeError):
+                pass
+
+        agency.save()
+        
+        return Response({
+            "message": "Settings updated",
+            "caution_active": agency.caution_active,
+            "caution_montant": str(agency.caution_montant),
+            "km_extra_active": agency.km_extra_active,
+            "km_par_jour": agency.km_par_jour,
+            "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
+        })

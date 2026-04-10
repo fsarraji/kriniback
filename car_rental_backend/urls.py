@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet # استدعاء لوحة القيادة
+from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView # استدعاء لوحة القيادة
 from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet
 from clients.views import ClientViewSet
 from contracts.views import ContractViewSet
@@ -34,4 +34,7 @@ urlpatterns =[
     
     # مسار الإحصائيات (Dashboard)
     path('api/dashboard/', DashboardStatsView.as_view(), name='dashboard_stats'),
+    
+    # مسار إعدادات الوكالة (Agency Settings)
+    path('api/agency/settings/', AgencySettingsView.as_view(), name='agency_settings'),
 ]

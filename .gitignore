@@ -170,3 +170,8 @@ regen_data.py
 debug_sql.py
 db_test_result.txt
 debug_output.txt
+error.txt
+mock.pdf
+mock_final.pdf
+*.pdf
+!contracts/templates/**/*.html

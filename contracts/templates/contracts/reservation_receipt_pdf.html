@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Reçu de Réservation – {{ agency.nom_agence|default:"Agence" }}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+  @page {
+    size: A5 landscape;
+    margin: 6mm;
+  }
+  
+  :root {
+    --primary: #111827;
+    --gray-bold: #374151;
+    --gray-text: #6b7280;
+    --gray-light: #e5e7eb;
+    --gray-bg: #f9fafb;
+    --accent: #2563eb;
+    --border: #d1d5db;
+  }
+
+  * { box-sizing: border-box; }
+  
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    color: var(--primary);
+    font-size: 11px;
+    line-height: 1.3;
+    background-color: #ffffff;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 134mm; /* A5 landscape height is 148mm - 12mm margins = 136mm. We use 134mm to be safe */
+    box-sizing: border-box;
+  }
+
+  .title-font {
+    font-family: 'Space Grotesk', Arial, sans-serif;
+  }
+
+  table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+  td, th { vertical-align: top; }
+  
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+  .brand-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    margin-bottom: 4px;
+    color: var(--primary);
+  }
+  .brand-details {
+    font-size: 9px;
+    color: var(--gray-text);
+    line-height: 1.3;
+  }
+  .brand-details strong { color: var(--gray-bold); font-weight: 600; }
+  
+  .receipt-id {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--primary);
+    background-color: var(--gray-bg);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px dashed var(--gray-bold);
+    display: inline-block;
+  }
+  
+  /* TITLE */
+  .receipt-title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+
+  /* CARDS */
+  .card-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .card {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  }
+  .card-bg {
+    background: var(--gray-bg);
+  }
+  .card-header {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gray-bold);
+    font-weight: 700;
+    margin-bottom: 6px;
+    border-bottom: 1px dashed var(--gray-light);
+    padding-bottom: 3px;
+  }
+
+  /* LIST ITEMS */
+  .kv-list { display: flex; flex-direction: column; gap: 3px; }
+  .kv-item { display: flex; justify-content: space-between; border-bottom: 1px dotted var(--border); padding-bottom: 2px; }
+  .kv-item:last-child { border-bottom: none; }
+  .kv-label { color: var(--gray-text); font-size: 10px; }
+  .kv-value { font-weight: 600; font-size: 10px; text-align: right; color: var(--primary); }
+
+  /* PAYMENT BLOCK */
+  .total-block {
+    background: var(--primary);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .amount-val { font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+
+  /* CAUTION & REMARQUES */
+  .info-box {
+    border-left: 3px solid var(--accent);
+    background: #eff6ff;
+    padding: 5px 8px;
+    font-size: 9px;
+    color: #1e3a8a;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+
+  /* SIGNATURES */
+  .signatures {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+    page-break-inside: avoid;
+  }
+  .sig-box {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    height: 85px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--gray-bg);
+  }
+  .sig-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+  .sig-footer { font-size: 8px; color: var(--gray-text); font-style: italic; }
+
+  /* FOOTER */
+  .document-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+    padding-top: 6px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8px;
+    color: var(--gray-text);
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header" style="align-items: center;">
+    <div style="flex: 2; display: flex; align-items: center; gap: 12px;">
+      {% if whatsapp_qr_base64 %}
+      <div>
+        <img src="{{ whatsapp_qr_base64 }}" style="width: 45px; height: 45px; border-radius: 4px; border: 1px solid var(--border); padding: 2px; background: white;" />
+      </div>
+      {% endif %}
+      <div>
+        <div class="brand-name title-font" style="margin-bottom: 2px;">{{ agency.nom_agence|default:"Votre Agence" }}</div>
+        <div class="brand-details">
+          <div>{{ agency.adresse|default:"Adresse de l'agence non renseignée" }}</div>
+          <div style="margin-top: 2px;">
+            Tél: <strong>{{ agency.telephone|default:"-" }}</strong> &nbsp;&bull;&nbsp; 
+            RC: <strong>{{ agency.rc|default:"-" }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align: right; flex: 1;">
+      <div class="receipt-id title-font">RÉSERVATION #{{ contract.id|stringformat:"04d"|default:"0000" }}</div>
+      <div class="brand-details" style="margin-top: 4px;">
+        Émis le: <strong>{{ contract.date_creation|date:"d/m/Y - H:i"|default:"—" }}</strong><br>
+        Agent: <strong>{{ contract.created_by.get_full_name|default:contract.created_by.username|default:"—" }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="receipt-title title-font">Reçu de Réservation de Véhicule</div>
+
+  <div class="card-container">
+    <!-- CLIENT -->
+    <div class="card card-bg">
+      <div class="card-header">1. Informations Locataire</div>
+      <div class="kv-list">
+        <div class="kv-item"><span class="kv-label">Nom Complet</span><span class="kv-value">{{ contract.client.nom }} {{ contract.client.prenom }}</span></div>
+        <div class="kv-item"><span class="kv-label">CIN / Passeport</span><span class="kv-value">{{ contract.client.cin_passport }}</span></div>
+        <div class="kv-item"><span class="kv-label">Téléphone</span><span class="kv-value">{{ contract.client.telephone|default:"-" }}</span></div>
+      </div>
+    </div>
+    
+    <!-- VEHICULE -->
+    <div class="card">
+      <div class="card-header">2. Véhicule Réservé</div>
+      <div class="kv-list">
+        <div class="kv-item"><span class="kv-label">Marque & Modèle</span><span class="kv-value">{{ contract.vehicle.modele }}</span></div>
+        <div class="kv-item"><span class="kv-label">Immatriculation</span><span class="kv-value">{{ contract.vehicle.matricule }}</span></div>
+        <div class="kv-item"><span class="kv-label">Catégorie</span><span class="kv-value">{{ contract.vehicle.type|default:"Standard" }}</span></div>
+      </div>
+    </div>
+
+    <!-- PERIODE -->
+    <div class="card">
+      <div class="card-header">3. Période de Location</div>
+      <div class="kv-list">
+        <div class="kv-item"><span class="kv-label">Du (Prise)</span><span class="kv-value" style="color:var(--accent);">{{ contract.date_sortie|date:"d/m/Y - H:i" }}</span></div>
+        <div class="kv-item"><span class="kv-label">Au (Retour)</span><span class="kv-value">{{ contract.date_retour_prevue|date:"d/m/Y - H:i" }}</span></div>
+        <div class="kv-item"><span class="kv-label">Durée Prévue</span><span class="kv-value">{{ contract.jours }} Jours</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINANCES -->
+  <div class="card-container">
+    <div class="card" style="flex: 2;">
+      <div class="card-header">4. Bilan de la Réservation</div>
+      <div style="display: flex; gap: 12px;">
+        <div style="flex: 1;" class="kv-list">
+          <div class="kv-item"><span class="kv-label">Tarif Journalier</span><span class="kv-value">{{ contract.prix_par_jour|floatformat:2 }} DH</span></div>
+          <div class="kv-item"><span class="kv-label">Montant Total</span><span class="kv-value">{{ contract.montant_total|floatformat:2 }} DH</span></div>
+          <div class="kv-item"><span class="kv-label">Méthode de Paiement</span><span class="kv-value">{{ contract.methode_paiement|default:"Espèce" }}</span></div>
+        </div>
+        <div style="flex: 1; border-left: 1px dotted var(--border); padding-left: 12px;" class="kv-list">
+          <div class="kv-item"><span class="kv-label">Avance Versée</span><span class="kv-value" style="color:#16a34a;">{{ contract.montant_paye|floatformat:2 }} DH</span></div>
+          <div class="kv-item"><span class="kv-label">Caution / Dépôt</span><span class="kv-value">{{ contract.caution|floatformat:2 }} DH</span></div>
+          <div class="total-block">
+            <span style="font-size:10px; text-transform:uppercase; font-weight:700;">Reste à payer</span>
+            <span class="amount-val">{{ contract.reste_a_payer|floatformat:2 }} <span style="font-size:10px;">DH</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>Note :</strong> Ce document constitue un justificatif de réservation. La caution et le reste à payer devront être réglés lors de la mise à disposition du véhicule.
+  </div>
+
+  <!-- SIGNATURES -->
+  <div class="signatures">
+    <div class="sig-box">
+      <div class="sig-title">Le Locataire</div>
+      <div class="sig-footer">Lu et approuvé.</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-title">Cachet & Signature Agence</div>
+      <div class="sig-footer">Validation de la réservation.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="document-footer">
+    <div>Reçu généré le {% now "d/m/Y à H:i" %}</div>
+    <div>Document Réservation - Page 1/1</div>
+  </div>
+
+</body>
+</html>

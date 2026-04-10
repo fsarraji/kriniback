@@ -95,9 +95,13 @@ class Contract(models.Model):
             self.vehicle.statut = 'Available'
             self.vehicle.save()
             
-        # 3. تحديث حالة السيارة إذا كانت في طور الكراء
+        # 3. تحديث حالة السيارة إذا كانت في طور الكراء أو ملغاة
         elif self.statut == 'EN_COURS':
             self.vehicle.statut = 'Rented'
+            self.vehicle.save()
+            
+        elif self.statut == 'ANNULE':
+            self.vehicle.statut = 'Available'
             self.vehicle.save()
 
         super(Contract, self).save(*args, **kwargs)

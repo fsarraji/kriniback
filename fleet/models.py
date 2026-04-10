@@ -51,6 +51,7 @@ class Vehicle(models.Model):
     prochain_vidange_km = models.IntegerField(verbose_name="Prochain vidange (km)")
     
     image = models.ImageField(upload_to='vehicles_images/', null=True, blank=True)
+    tarif_km_extra = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Tarif km supplémentaire (DH/km)")
 
     def __str__(self):
         return f"{self.marque} {self.modele} - {self.matricule}"

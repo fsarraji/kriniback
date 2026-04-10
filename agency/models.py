@@ -13,6 +13,13 @@ class Agency(models.Model):
     date_creation = models.DateTimeField(auto_now_add=True)
     
     is_active = models.BooleanField(default=True, verbose_name="Compte actif")
+    caution_active = models.BooleanField(default=True, verbose_name="Caution active")
+    caution_montant = models.DecimalField(max_digits=10, decimal_places=2, default=1500.00, verbose_name="Montant de la caution")
+
+    # Kilométrage journalier inclus
+    km_extra_active = models.BooleanField(default=True, verbose_name="Facturation km extra active")
+    km_par_jour = models.IntegerField(default=250, verbose_name="Km inclus par jour")
+    km_tarif_extra_defaut = models.DecimalField(max_digits=6, decimal_places=2, default=1.50, verbose_name="Tarif DH par km supplémentaire (défaut)")
 
     def __str__(self):
         return self.nom_agence
