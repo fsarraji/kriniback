@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'payments',
     'expenses',
     'django_filters',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -175,3 +176,27 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+# إعدادات Supabase Storage (S3 Compatible)
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+
+# Endpoint URL من Supabase: https://<PROJECT_REF>.supabase.co/storage/v1/s3
+AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1') # حدد المنطقة إذا لزم الأمر
+
+# إذا تم توفير إعدادات S3، نستخدم django-storages
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
+    # Set standard django storage variables
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    # Optional: Si vous voulez que les URLs publiques soient signées par défaut
+    AWS_S3_FILE_OVERWRITE = False
+    
+    # Custom protocol
+    AWS_S3_URL_PROTOCOL = 'https:'
+else:
+    # إعدادات الرفع المحلي (Local Storage) في حالة عدم وجود S3
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+

@@ -17,6 +17,10 @@ class Client(models.Model):
     # إضافات حديثة
     liste_noire = models.BooleanField(default=False, verbose_name="في القائمة السوداء؟")
     remarques = models.TextField(blank=True, null=True, verbose_name="ملاحظات حول الزبون")
+    
+    # مستندات مرفقة (Scans/Images)
+    scan_cin = models.ImageField(upload_to='clients_documents/cin/', null=True, blank=True, verbose_name="صورة البطاقة الوطنية/الجواز")
+    scan_permis = models.ImageField(upload_to='clients_documents/permis/', null=True, blank=True, verbose_name="صورة رخصة السياقة")
     class Meta:
         # لضمان عدم تكرار رقم البطاقة الوطنية داخل *نفس الوكالة* فقط
         unique_together = ['agency', 'cin_passport']
