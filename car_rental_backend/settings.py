@@ -195,6 +195,8 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     
     # Custom protocol
     AWS_S3_URL_PROTOCOL = 'https:'
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
 else:
     # إعدادات الرفع المحلي (Local Storage) في حالة عدم وجود S3
     MEDIA_URL = '/media/'
