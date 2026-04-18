@@ -221,7 +221,7 @@ class ContractViewSet(viewsets.ModelViewSet):
         # 2. تحديد مسار القالب (HTML Template)
         template_path = 'contracts/contract_pdf.html'
         
-        car_diagram_path = r'd:\location\car_rental_frontend\src\assets\car_damage_diagram.png'
+        car_diagram_path = os.path.join(settings.BASE_DIR, 'car_damage_diagram.png')
         depart_damages = contract.damages.filter(type='DEPART')
         retour_damages = contract.damages.filter(type='RETOUR')
 
@@ -348,7 +348,10 @@ class ContractViewSet(viewsets.ModelViewSet):
             pdf_file = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
             response.write(pdf_file)
         except Exception as e:
-            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            import traceback
+            error_details = traceback.format_exc()
+            print("PDF GENERATION ERROR: ", error_details)
+            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return response    
 
@@ -396,6 +399,9 @@ class ContractViewSet(viewsets.ModelViewSet):
             pdf_file = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
             response.write(pdf_file)
         except Exception as e:
-            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            import traceback
+            error_details = traceback.format_exc()
+            print("PDF GENERATION ERROR: ", error_details)
+            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return response
