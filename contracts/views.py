@@ -27,61 +27,65 @@ def generate_fuel_gauge_image(level_str):
         level = 0
     levels = 8
     
-    width, height = 200, 120
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
+    # Smaller canvas (150x90) to save memory
+    width, height = 150, 90
+    # Use white background (no alpha) to allow JPEG conversion
+    img = Image.new('RGB', (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     
-    cx, cy = 100, 100
-    r = 80
+    cx, cy = 75, 75
+    r = 60
     
+    # Track background
     draw.arc([cx - r, cy - r, cx + r, cy + r], 180, 0, fill='#e2e8f0', width=3)
     
     try:
-        font = ImageFont.truetype("arial.ttf", size=20)
-        font_small = ImageFont.truetype("arial.ttf", size=16)
+        font = ImageFont.truetype("arial.ttf", size=14)
+        font_small = ImageFont.truetype("arial.ttf", size=10)
     except IOError:
         font = ImageFont.load_default()
         font_small = ImageFont.load_default()
         
-    draw.text((30, 115), "E", fill='#0f172a', font=font, anchor="mm")
-    draw.text((170, 115), "F", fill='#0f172a', font=font, anchor="mm")
+    draw.text((20, 80), "E", fill='#0f172a', font=font, anchor="mm")
+    draw.text((130, 80), "F", fill='#0f172a', font=font, anchor="mm")
     
     for i in range(levels + 1):
         a = 180 - (i / levels) * 180
         rad = math.radians(a)
         is_major = i % 2 == 0
-        length = 14 if is_major else 7
-        r_in = r - length
+        tick_len = 10 if is_major else 5
+        r_in = r - tick_len
         r_out = r
         x1 = cx + r_in * math.cos(rad)
         y1 = cy - r_in * math.sin(rad)
         x2 = cx + r_out * math.cos(rad)
         y2 = cy - r_out * math.sin(rad)
         
-        color = '#ef4444' if i <= 1 else '#0f172a'
-        line_width = 4 if is_major else 2
-        draw.line((x1, y1, x2, y2), fill=color, width=line_width)
-
-    needle_angle = 180 - (level / levels) * 180
-    needle_rad = math.radians(needle_angle)
-    needle_length = r - 18
-    nx = cx + needle_length * math.cos(needle_rad)
-    ny = cy - needle_length * math.sin(needle_rad)
+        draw.line((x1, y1, x2, y2), fill='#94a3b8', width=2 if is_major else 1)
+        
+        if is_major:
+            # Shift text towards center
+            tx = cx + (r - 20) * math.cos(rad)
+            ty = cy - (r - 20) * math.sin(rad)
+            draw.text((tx, ty), str(i), fill='#64748b', font=font_small, anchor="mm")
+            
+    level_val = min(max(level, 0), levels)
+    angle = 180 - (level_val / levels) * 180
+    rad = math.radians(angle)
+    pointer_len = r - 5
+    px = cx + pointer_len * math.cos(rad)
+    py = cy - pointer_len * math.sin(rad)
     
-    tail_length = 12
-    tx = cx - tail_length * math.cos(needle_rad)
-    ty = cy + tail_length * math.sin(needle_rad)
-    
-    draw.line((tx, ty, nx, ny), fill='#ef4444', width=5)
-    
-    dot_r = 8
-    draw.ellipse([cx - dot_r, cy - dot_r, cx + dot_r, cy + dot_r], fill='#0f172a')
-    draw.text((cx, cy - 25), f"{level}/8", fill='#64748b', font=font_small, anchor="mm")
+    # Drawing needle
+    draw.line((cx, cy, px, py), fill='#ef4444', width=3)
+    # Center dot
+    draw.ellipse((cx-5, cy-5, cx+5, cy+5), fill='#1e293b')
     
     buffered = BytesIO()
-    img.save(buffered, format="PNG")
+    # JPEG is extremely compact for such simple graphics
+    img.save(buffered, format="JPEG", quality=70, optimize=True)
     img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
-    return f"data:image/png;base64,{img_str}"
+    return f"data:image/jpeg;base64,{img_str}"
 
 class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
@@ -240,8 +244,9 @@ class ContractViewSet(viewsets.ModelViewSet):
                 if not os.path.exists(car_diagram_path):
                     return ""
                 try:
-                    img = Image.open(car_diagram_path).convert('RGBA')
-                    img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                    img = Image.open(car_diagram_path).convert('RGB')
+                    # Significant reduction: 250px is enough for A4 printing
+                    img.thumbnail((250, 250), Image.Resampling.LANCZOS)
                     if damages.exists():
                         draw = ImageDraw.Draw(img)
                         w, h = img.size
@@ -256,9 +261,10 @@ class ContractViewSet(viewsets.ModelViewSet):
                             draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
                             draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
                     buffered = BytesIO()
-                    img.save(buffered, format="PNG", optimize=True)
+                    # JPEG is MUCH lighter in base64 than PNG
+                    img.save(buffered, format="JPEG", quality=75, optimize=True)
                     encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                    return f"data:image/png;base64,{encoded}"
+                    return f"data:image/jpeg;base64,{encoded}"
                 except Exception as e:
                     return ""
 
