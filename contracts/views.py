@@ -350,7 +350,9 @@ class ContractViewSet(viewsets.ModelViewSet):
             import traceback
             error_details = traceback.format_exc()
             print("PDF GENERATION ERROR: ", error_details)
-            return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error_response = HttpResponse(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=500)
+            error_response["Access-Control-Allow-Origin"] = "*"
+            return error_response
         
         return response    
 
@@ -405,7 +407,7 @@ class ContractViewSet(viewsets.ModelViewSet):
         
         return response
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def test_weasyprint(self, request):
         from weasyprint import HTML
         try:
@@ -416,4 +418,6 @@ class ContractViewSet(viewsets.ModelViewSet):
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
-            return Response(f'WeasyPrint Test Failed:\n{error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response = HttpResponse(f'WeasyPrint Test Failed:\n{error_details}', status=500)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
