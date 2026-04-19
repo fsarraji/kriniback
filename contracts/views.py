@@ -213,148 +213,151 @@ class ContractViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
         
     @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'])
     def print_contract(self, request, pk=None):
-        # 1. جلب العقد المطلوب
-        contract = self.get_object()
-        agency = request.user.agency
+        try:
+            # 1. جلب العقد المطلوب
+            contract = self.get_object()
+            agency = request.user.agency
 
-        # 2. تحديد مسار القالب (HTML Template)
-        template_path = 'contracts/contract_pdf.html'
-        
-        car_diagram_path = os.path.join(settings.BASE_DIR, 'car_damage_diagram.png')
-        depart_damages = contract.damages.filter(type='DEPART')
-        retour_damages = contract.damages.filter(type='RETOUR')
-
-        def build_diagram_base64(damages, dot_color='red'):
-            """Draw damage markers on the car diagram and return base64 PNG."""
-            if not os.path.exists(car_diagram_path):
-                return ""
-            try:
-                img = Image.open(car_diagram_path).convert('RGBA')
-                if damages.exists():
-                    draw = ImageDraw.Draw(img)
-                    w, h = img.size
-                    try:
-                        font = ImageFont.truetype("arial.ttf", size=int(w * 0.04))
-                    except IOError:
-                        font = ImageFont.load_default()
-                    for i, dmg in enumerate(damages):
-                        x_px = (dmg.x / 100.0) * w
-                        y_px = (dmg.y / 100.0) * h
-                        radius = w * 0.02
-                        draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
-                        draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
-                buffered = BytesIO()
-                img.save(buffered, format="PNG")
-                encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                return f"data:image/png;base64,{encoded}"
-            except Exception as e:
-                print("Error building diagram:", e)
-                return ""
-
-        car_diagram_base64 = build_diagram_base64(depart_damages, dot_color='red')
-        retour_diagram_base64 = build_diagram_base64(retour_damages, dot_color='orange')
+            # 2. تحديد مسار القالب (HTML Template)
+            template_path = 'contracts/contract_pdf.html'
             
-        # 3. البيانات التي سنرسلها للقالب
-        fuel_depart_base64 = generate_fuel_gauge_image(contract.carburant_sortie)
-        fuel_retour_base64 = generate_fuel_gauge_image(contract.carburant_retour)
+            car_diagram_path = os.path.join(settings.BASE_DIR, 'car_damage_diagram.png')
+            depart_damages = contract.damages.filter(type='DEPART')
+            retour_damages = contract.damages.filter(type='RETOUR')
 
-        # Generate WhatsApp QR code
-        whatsapp_qr_base64 = ""
-        if agency.telephone:
-            phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
-            if phone.startswith('0'):
-                phone = '212' + phone[1:]
-            elif phone.startswith('+'):
-                phone = phone[1:]
-            
-            if phone:
-                wa_link = f"https://wa.me/{phone}"
+            def build_diagram_base64(damages, dot_color='red'):
+                """Draw damage markers on the car diagram and return base64 PNG."""
+                if not os.path.exists(car_diagram_path):
+                    return ""
                 try:
-                    qr = qrcode.QRCode(version=1, box_size=10, border=1)
-                    qr.add_data(wa_link)
-                    qr.make(fit=True)
-                    qr_img = qr.make_image(fill_color="#111827", back_color="white")
-                    qr_buf = BytesIO()
-                    qr_img.save(qr_buf, format="PNG")
-                    qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
-                    whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
+                    img = Image.open(car_diagram_path).convert('RGBA')
+                    if damages.exists():
+                        draw = ImageDraw.Draw(img)
+                        w, h = img.size
+                        try:
+                            font = ImageFont.truetype("arial.ttf", size=int(w * 0.04))
+                        except IOError:
+                            font = ImageFont.load_default()
+                        for i, dmg in enumerate(damages):
+                            x_px = (dmg.x / 100.0) * w
+                            y_px = (dmg.y / 100.0) * h
+                            radius = w * 0.02
+                            draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
+                            draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
+                    buffered = BytesIO()
+                    img.save(buffered, format="PNG")
+                    encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    return f"data:image/png;base64,{encoded}"
                 except Exception as e:
-                    print("Error generating QR code:", e)
+                    print("Error building diagram:", e)
+                    return ""
 
-        # Generate Barcode for Contract ID
-        contract_barcode_base64 = ""
-        try:
-            # Format ID as 4 digits (e.g. 0042)
-            code_str = str(contract.id).zfill(4)
-            COD128 = barcode.get_barcode_class('code128')
-            # Create barcode WITHOUT text at the bottom (we already display it in the PDF)
-            bar = COD128(code_str, writer=ImageWriter())
-            bar_buf = BytesIO()
-            # Reducing module_height from 10.0 to 5.0 for a slimmer look
-            bar.write(bar_buf, options={"write_text": False, "module_height": 5.0, "module_width": 0.25})
-            bar_b64 = base64.b64encode(bar_buf.getvalue()).decode('utf-8')
-            contract_barcode_base64 = f"data:image/png;base64,{bar_b64}"
-        except Exception as e:
-            print("Error generating barcode:", e)
+            car_diagram_base64 = build_diagram_base64(depart_damages, dot_color='red')
+            retour_diagram_base64 = build_diagram_base64(retour_damages, dot_color='orange')
+                
+            # 3. البيانات التي سنرسلها للقالب
+            fuel_depart_base64 = generate_fuel_gauge_image(contract.carburant_sortie)
+            fuel_retour_base64 = generate_fuel_gauge_image(contract.carburant_retour)
 
-        km_parcourus = contract.km_retour - contract.km_sortie if contract.km_retour else None
+            # Generate WhatsApp QR code
+            whatsapp_qr_base64 = ""
+            if agency.telephone:
+                phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
+                if phone.startswith('0'):
+                    phone = '212' + phone[1:]
+                elif phone.startswith('+'):
+                    phone = phone[1:]
+                
+                if phone:
+                    wa_link = f"https://wa.me/{phone}"
+                    try:
+                        qr = qrcode.QRCode(version=1, box_size=10, border=1)
+                        qr.add_data(wa_link)
+                        qr.make(fit=True)
+                        qr_img = qr.make_image(fill_color="#111827", back_color="white")
+                        qr_buf = BytesIO()
+                        qr_img.save(qr_buf, format="PNG")
+                        qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
+                        whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
+                    except Exception as e:
+                        print("Error generating QR code:", e)
 
-        # Paramètres kilométrage de l'agence
-        agency_km_extra_active = agency.km_extra_active
-        agency_km_par_jour = agency.km_par_jour
-        km_tarif_extra = float(contract.vehicle.tarif_km_extra or agency.km_tarif_extra_defaut or 1.5)
-        km_inclus_total = (agency_km_par_jour * contract.jours) if agency_km_extra_active else None
-        km_supplementaires = None
-        montant_km_extra = None
-        if agency_km_extra_active and km_parcourus is not None and km_inclus_total is not None:
-            km_supplementaires = max(0, km_parcourus - km_inclus_total)
-            montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
+            # Generate Barcode for Contract ID
+            contract_barcode_base64 = ""
+            try:
+                # Format ID as 4 digits (e.g. 0042)
+                code_str = str(contract.id).zfill(4)
+                COD128 = barcode.get_barcode_class('code128')
+                # Create barcode WITHOUT text at the bottom (we already display it in the PDF)
+                bar = COD128(code_str, writer=ImageWriter())
+                bar_buf = BytesIO()
+                # Reducing module_height from 10.0 to 5.0 for a slimmer look
+                bar.write(bar_buf, options={"write_text": False, "module_height": 5.0, "module_width": 0.25})
+                bar_b64 = base64.b64encode(bar_buf.getvalue()).decode('utf-8')
+                contract_barcode_base64 = f"data:image/png;base64,{bar_b64}"
+            except Exception as e:
+                print("Error generating barcode:", e)
 
-        context = {
-            'contract': contract,
-            'agency': agency,
-            'car_diagram_base64': car_diagram_base64,
-            'retour_diagram_base64': retour_diagram_base64,
-            'depart_damages': depart_damages,
-            'retour_damages': retour_damages,
-            'fuel_depart_base64': fuel_depart_base64,
-            'fuel_retour_base64': fuel_retour_base64,
-            'whatsapp_qr_base64': whatsapp_qr_base64,
-            'contract_barcode_base64': contract_barcode_base64,
-            'km_parcourus': km_parcourus,
-            # Km overage
-            'agency_km_extra_active': agency_km_extra_active,
-            'agency_km_par_jour': agency_km_par_jour,
-            'km_tarif_extra': km_tarif_extra,
-            'km_inclus_total': km_inclus_total,
-            'km_supplementaires': km_supplementaires,
-            'montant_km_extra': montant_km_extra,
-        }
+            km_parcourus = contract.km_retour - contract.km_sortie if contract.km_retour else None
 
-        # 4. إعداد الـ HTTP Response ليكون من نوع PDF
-        response = HttpResponse(content_type='application/pdf')
-        # 'inline' تعني فتح الـ PDF في المتصفح مباشرة للطباعة. 
-        # إذا أردت تحميله مباشرة استبدل 'inline' بـ 'attachment'
-        response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
+            # Paramètres kilométrage de l'agence
+            agency_km_extra_active = agency.km_extra_active
+            agency_km_par_jour = agency.km_par_jour
+            km_tarif_extra = float(contract.vehicle.tarif_km_extra or agency.km_tarif_extra_defaut or 1.5)
+            km_inclus_total = (agency_km_par_jour * contract.jours) if agency_km_extra_active else None
+            km_supplementaires = None
+            montant_km_extra = None
+            if agency_km_extra_active and km_parcourus is not None and km_inclus_total is not None:
+                km_supplementaires = max(0, km_parcourus - km_inclus_total)
+                montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
 
-        # 5. جلب القالب ورسمه (Render)
-        template = get_template(template_path)
-        html = template.render(context)
+            context = {
+                'contract': contract,
+                'agency': agency,
+                'car_diagram_base64': car_diagram_base64,
+                'retour_diagram_base64': retour_diagram_base64,
+                'depart_damages': depart_damages,
+                'retour_damages': retour_damages,
+                'fuel_depart_base64': fuel_depart_base64,
+                'fuel_retour_base64': fuel_retour_base64,
+                'whatsapp_qr_base64': whatsapp_qr_base64,
+                'contract_barcode_base64': contract_barcode_base64,
+                'km_parcourus': km_parcourus,
+                # Km overage
+                'agency_km_extra_active': agency_km_extra_active,
+                'agency_km_par_jour': agency_km_par_jour,
+                'km_tarif_extra': km_tarif_extra,
+                'km_inclus_total': km_inclus_total,
+                'km_supplementaires': km_supplementaires,
+                'montant_km_extra': montant_km_extra,
+            }
 
-        # 6. تحويل الـ HTML إلى PDF باستخدام WeasyPrint
-        try:
+            # 4. إعداد الـ HTTP Response ليكون من نوع PDF
+            response = HttpResponse(content_type='application/pdf')
+            # 'inline' تعني فتح الـ PDF في المتصفح مباشرة للطباعة. 
+            # إذا أردت تحميله مباشرة استبدل 'inline' بـ 'attachment'
+            response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
+
+            # 5. جلب القالب ورسمه (Render)
+            template = get_template(template_path)
+            html = template.render(context)
+
+            # 6. تحويل الـ HTML إلى PDF باستخدام WeasyPrint
             pdf_file = HTML(string=html).write_pdf()
             response.write(pdf_file)
+            return response
+
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
             print("PDF GENERATION ERROR: ", error_details)
+            with open('pdf_error.log', 'w') as f:
+                f.write(error_details)
             error_response = HttpResponse(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=500)
             error_response["Access-Control-Allow-Origin"] = "*"
             return error_response
-        
-        return response    
 
     @action(detail=True, methods=['get'])
     def print_reservation_receipt(self, request, pk=None):
@@ -421,3 +424,11 @@ class ContractViewSet(viewsets.ModelViewSet):
             response = HttpResponse(f'WeasyPrint Test Failed:\n{error_details}', status=500)
             response["Access-Control-Allow-Origin"] = "*"
             return response
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def view_pdf_error(self, request):
+        import os
+        if os.path.exists('pdf_error.log'):
+            with open('pdf_error.log', 'r') as f:
+                return HttpResponse(f.read(), content_type='text/plain')
+        return HttpResponse("No error logged yet.", content_type='text/plain')
