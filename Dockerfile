@@ -2,9 +2,11 @@ FROM python:3.12-slim
 
 # Install system dependencies required for WeasyPrint and PostgreSQL
 RUN apt-get update && apt-get install -y \
+    pkg-config \
+    python3-dev \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
-    libcairo2 \
+    libcairo2-dev \
     libffi-dev \
     libjpeg-dev \
     libopenjp2-7-dev \
