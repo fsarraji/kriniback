@@ -344,8 +344,7 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         # 6. تحويل الـ HTML إلى PDF باستخدام WeasyPrint
         try:
-            # WeasyPrint needs a base_url to resolve relative paths (like images/CSS if any)
-            pdf_file = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
+            pdf_file = HTML(string=html).write_pdf()
             response.write(pdf_file)
         except Exception as e:
             import traceback
@@ -396,7 +395,7 @@ class ContractViewSet(viewsets.ModelViewSet):
         html = template.render(context)
 
         try:
-            pdf_file = HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf()
+            pdf_file = HTML(string=html).write_pdf()
             response.write(pdf_file)
         except Exception as e:
             import traceback
