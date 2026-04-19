@@ -217,7 +217,6 @@ class ContractViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
         
     @action(detail=True, methods=['get'])
-    @action(detail=True, methods=['get'])
     def print_contract(self, request, pk=None):
         import logging
         
