@@ -1,0 +1,22 @@
+# Frontend
+car_rental_frontend/node_modules
+car_rental_frontend/dist
+car_rental_frontend/build
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.env
+
+# Git
+.git/
+.gitignore
+
+# SQLite
+*.sqlite3
+
+# Static / Media (depending on strategy, but usually keep these if not using external storage)
+# media/
