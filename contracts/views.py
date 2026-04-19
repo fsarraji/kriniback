@@ -358,13 +358,13 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             import traceback
-            import tempfile
-            import os
             
             error_details = traceback.format_exc()
             print("PDF GENERATION ERROR: ", error_details)
             
             try:
+                # We can safely use os.path without importing it here if it's imported at the top,
+                # but to be safe and avoid UnboundLocalError we just write to /tmp directly
                 with open('/tmp/pdf_error.log', 'w') as f:
                     f.write(error_details)
             except Exception as io_err:
