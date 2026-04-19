@@ -188,17 +188,28 @@ AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1') # حدد ا
 
 # إذا تم توفير إعدادات S3، نستخدم django-storages
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
-    # Set standard django storage variables
+    # Use django-storages with S3 backend
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    # Optional: Si vous voulez que les URLs publiques soient signées par défaut
+    
+    # Supabase S3 Specifics
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1')
     AWS_S3_FILE_OVERWRITE = False
     
-    # Custom protocol
+    # IMPORTANT: Set to False for public buckets to get clean URLs
+    AWS_QUERYSTRING_AUTH = False
+    
+    # Metadata for uploaded files
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    
+    # Networking specifics
     AWS_S3_URL_PROTOCOL = 'https:'
     AWS_S3_ADDRESSING_STYLE = 'path'
     AWS_S3_SIGNATURE_VERSION = 's3v4'
 else:
-    # إعدادات الرفع المحلي (Local Storage) في حالة عدم وجود S3
+    # Fallback to local storage
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
