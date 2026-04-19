@@ -358,10 +358,19 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             import traceback
+            import tempfile
+            import os
+            
             error_details = traceback.format_exc()
             print("PDF GENERATION ERROR: ", error_details)
-            with open('pdf_error.log', 'w') as f:
-                f.write(error_details)
+            
+            try:
+                with open('/tmp/pdf_error.log', 'w') as f:
+                    f.write(error_details)
+            except Exception as io_err:
+                print("Failed to write to pdf_error.log:", io_err)
+                error_details += f"\nAlso failed to write log: {io_err}"
+                
             error_response = HttpResponse(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=500)
             error_response["Access-Control-Allow-Origin"] = "*"
             return error_response
@@ -435,7 +444,7 @@ class ContractViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def view_pdf_error(self, request):
         import os
-        if os.path.exists('pdf_error.log'):
-            with open('pdf_error.log', 'r') as f:
+        if os.path.exists('/tmp/pdf_error.log'):
+            with open('/tmp/pdf_error.log', 'r') as f:
                 return HttpResponse(f.read(), content_type='text/plain')
         return HttpResponse("No error logged yet.", content_type='text/plain')
