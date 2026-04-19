@@ -215,34 +215,37 @@ class ContractViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     @action(detail=True, methods=['get'])
     def print_contract(self, request, pk=None):
+        import logging
+        
+        def log_checkpoint(msg):
+            with open('/tmp/pdf_error.log', 'a') as f:
+                f.write(msg + '\n')
+                
         try:
-            # 1. جلب العقد المطلوب
+            with open('/tmp/pdf_error.log', 'w') as f:
+                f.write("--- STARTED PDF GENERATION ---\n")
+                
+            log_checkpoint("1. Fetching contract")
             contract = self.get_object()
             agency = request.user.agency
 
-            # 2. تحديد مسار القالب (HTML Template)
+            log_checkpoint("2. Settings paths")
             template_path = 'contracts/contract_pdf.html'
-            
             car_diagram_path = os.path.join(settings.BASE_DIR, 'car_damage_diagram.png')
             depart_damages = contract.damages.filter(type='DEPART')
             retour_damages = contract.damages.filter(type='RETOUR')
 
+            log_checkpoint("3. Generating diagram base64")
             def build_diagram_base64(damages, dot_color='red'):
-                """Draw damage markers on the car diagram and return base64 PNG."""
                 if not os.path.exists(car_diagram_path):
                     return ""
                 try:
                     img = Image.open(car_diagram_path).convert('RGBA')
-                    
-                    # OOM PREVENTION: WeasyPrint crashes on 512MB RAM if base64 images are too large.
-                    # Shrink the image to max 400x400 to save memory.
                     img.thumbnail((300, 300), Image.Resampling.LANCZOS)
-                    
                     if damages.exists():
                         draw = ImageDraw.Draw(img)
                         w, h = img.size
                         try:
-                            # Tweak font size for the smaller image
                             font = ImageFont.truetype("arial.ttf", size=int(w * 0.08))
                         except IOError:
                             font = ImageFont.load_default()
@@ -253,22 +256,20 @@ class ContractViewSet(viewsets.ModelViewSet):
                             draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
                             draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
                     buffered = BytesIO()
-                    # Optimize PNG output
                     img.save(buffered, format="PNG", optimize=True)
                     encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
                     return f"data:image/png;base64,{encoded}"
                 except Exception as e:
-                    print("Error building diagram:", e)
                     return ""
 
             car_diagram_base64 = build_diagram_base64(depart_damages, dot_color='red')
             retour_diagram_base64 = build_diagram_base64(retour_damages, dot_color='orange')
                 
-            # 3. البيانات التي سنرسلها للقالب
+            log_checkpoint("4. Generating fuel gauges")
             fuel_depart_base64 = generate_fuel_gauge_image(contract.carburant_sortie)
             fuel_retour_base64 = generate_fuel_gauge_image(contract.carburant_retour)
 
-            # Generate WhatsApp QR code
+            log_checkpoint("5. Generating QR code")
             whatsapp_qr_base64 = ""
             if agency.telephone:
                 phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
@@ -289,27 +290,23 @@ class ContractViewSet(viewsets.ModelViewSet):
                         qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
                         whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
                     except Exception as e:
-                        print("Error generating QR code:", e)
+                        pass
 
-            # Generate Barcode for Contract ID
+            log_checkpoint("6. Generating Barcode")
             contract_barcode_base64 = ""
             try:
-                # Format ID as 4 digits (e.g. 0042)
                 code_str = str(contract.id).zfill(4)
                 COD128 = barcode.get_barcode_class('code128')
-                # Create barcode WITHOUT text at the bottom (we already display it in the PDF)
                 bar = COD128(code_str, writer=ImageWriter())
                 bar_buf = BytesIO()
-                # Reducing module_height from 10.0 to 5.0 for a slimmer look
                 bar.write(bar_buf, options={"write_text": False, "module_height": 5.0, "module_width": 0.25})
                 bar_b64 = base64.b64encode(bar_buf.getvalue()).decode('utf-8')
                 contract_barcode_base64 = f"data:image/png;base64,{bar_b64}"
             except Exception as e:
-                print("Error generating barcode:", e)
+                pass
 
+            log_checkpoint("7. Calculating Finances")
             km_parcourus = contract.km_retour - contract.km_sortie if contract.km_retour else None
-
-            # Paramètres kilométrage de l'agence
             agency_km_extra_active = agency.km_extra_active
             agency_km_par_jour = agency.km_par_jour
             km_tarif_extra = float(contract.vehicle.tarif_km_extra or agency.km_tarif_extra_defaut or 1.5)
@@ -320,6 +317,7 @@ class ContractViewSet(viewsets.ModelViewSet):
                 km_supplementaires = max(0, km_parcourus - km_inclus_total)
                 montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
 
+            log_checkpoint("8. Building Context")
             context = {
                 'contract': contract,
                 'agency': agency,
@@ -332,7 +330,6 @@ class ContractViewSet(viewsets.ModelViewSet):
                 'whatsapp_qr_base64': whatsapp_qr_base64,
                 'contract_barcode_base64': contract_barcode_base64,
                 'km_parcourus': km_parcourus,
-                # Km overage
                 'agency_km_extra_active': agency_km_extra_active,
                 'agency_km_par_jour': agency_km_par_jour,
                 'km_tarif_extra': km_tarif_extra,
@@ -341,36 +338,25 @@ class ContractViewSet(viewsets.ModelViewSet):
                 'montant_km_extra': montant_km_extra,
             }
 
-            # 4. إعداد الـ HTTP Response ليكون من نوع PDF
+            log_checkpoint("9. Rendering Django HTML Template")
             response = HttpResponse(content_type='application/pdf')
-            # 'inline' تعني فتح الـ PDF في المتصفح مباشرة للطباعة. 
-            # إذا أردت تحميله مباشرة استبدل 'inline' بـ 'attachment'
             response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
-
-            # 5. جلب القالب ورسمه (Render)
             template = get_template(template_path)
             html = template.render(context)
 
-            # 6. تحويل الـ HTML إلى PDF باستخدام WeasyPrint
-            pdf_file = HTML(string=html).write_pdf()
+            log_checkpoint(f"10. HTML rendered. Size: {len(html)} chars. Starting WeasyPrint write_pdf")
+            pdf_file = HTML(string=html).write_pdf(optimize_images=True)
+            
+            log_checkpoint("11. SUCCESS! Weasyprint completed.")
             response.write(pdf_file)
             return response
 
         except Exception as e:
             import traceback
-            
             error_details = traceback.format_exc()
-            print("PDF GENERATION ERROR: ", error_details)
+            with open('/tmp/pdf_error.log', 'a') as f:
+                f.write(f"\nCRASH EXCEPTION:\n{error_details}")
             
-            try:
-                # We can safely use os.path without importing it here if it's imported at the top,
-                # but to be safe and avoid UnboundLocalError we just write to /tmp directly
-                with open('/tmp/pdf_error.log', 'w') as f:
-                    f.write(error_details)
-            except Exception as io_err:
-                print("Failed to write to pdf_error.log:", io_err)
-                error_details += f"\nAlso failed to write log: {io_err}"
-                
             error_response = HttpResponse(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=500)
             error_response["Access-Control-Allow-Origin"] = "*"
             return error_response
