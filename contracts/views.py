@@ -216,7 +216,7 @@ class ContractViewSet(viewsets.ModelViewSet):
             'km_parcourus': contract.km_retour - contract.km_sortie,
         }, status=status.HTTP_200_OK)
         
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
     def print_contract(self, request, pk=None):
         import logging
         
