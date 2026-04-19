@@ -351,7 +351,7 @@ class ContractViewSet(viewsets.ModelViewSet):
             html = template.render(context)
 
             log_checkpoint(f"10. HTML rendered. Size: {len(html)} chars. Starting WeasyPrint write_pdf")
-            pdf_file = HTML(string=html).write_pdf(optimize_images=True)
+            pdf_file = HTML(string=html).write_pdf()
             
             log_checkpoint("11. SUCCESS! Weasyprint completed.")
             response.write(pdf_file)
