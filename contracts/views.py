@@ -405,3 +405,16 @@ class ContractViewSet(viewsets.ModelViewSet):
             return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return response
+
+    @action(detail=False, methods=['get'])
+    def test_weasyprint(self, request):
+        from weasyprint import HTML
+        try:
+            pdf_file = HTML(string="<h1>Test Weasyprint</h1><p>It works!</p>").write_pdf()
+            response = HttpResponse(content_type='application/pdf')
+            response.write(pdf_file)
+            return response
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            return Response(f'WeasyPrint Test Failed:\n{error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
