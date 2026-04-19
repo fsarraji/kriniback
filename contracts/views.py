@@ -233,21 +233,28 @@ class ContractViewSet(viewsets.ModelViewSet):
                     return ""
                 try:
                     img = Image.open(car_diagram_path).convert('RGBA')
+                    
+                    # OOM PREVENTION: WeasyPrint crashes on 512MB RAM if base64 images are too large.
+                    # Shrink the image to max 400x400 to save memory.
+                    img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                    
                     if damages.exists():
                         draw = ImageDraw.Draw(img)
                         w, h = img.size
                         try:
-                            font = ImageFont.truetype("arial.ttf", size=int(w * 0.04))
+                            # Tweak font size for the smaller image
+                            font = ImageFont.truetype("arial.ttf", size=int(w * 0.08))
                         except IOError:
                             font = ImageFont.load_default()
                         for i, dmg in enumerate(damages):
                             x_px = (dmg.x / 100.0) * w
                             y_px = (dmg.y / 100.0) * h
-                            radius = w * 0.02
+                            radius = w * 0.04
                             draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
                             draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
                     buffered = BytesIO()
-                    img.save(buffered, format="PNG")
+                    # Optimize PNG output
+                    img.save(buffered, format="PNG", optimize=True)
                     encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
                     return f"data:image/png;base64,{encoded}"
                 except Exception as e:
