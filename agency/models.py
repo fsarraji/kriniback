@@ -10,6 +10,7 @@ class Agency(models.Model):
     ice = models.CharField(max_length=50, blank=True, null=True, verbose_name="Identifiant Commun de l'Entreprise (ICE)")
     email = models.EmailField(blank=True, null=True)
     logo = models.ImageField(upload_to='agency_logos/', null=True, blank=True)
+    cachet_signature = models.ImageField(upload_to='agency_cachets/', null=True, blank=True, verbose_name="Cachet et Signature")
     date_creation = models.DateTimeField(auto_now_add=True)
     
     is_active = models.BooleanField(default=True, verbose_name="Compte actif")

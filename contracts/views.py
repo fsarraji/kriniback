@@ -222,6 +222,7 @@ class ContractViewSet(viewsets.ModelViewSet):
             # 1. جلب العقد المطلوب
             contract = self.get_object()
             agency = request.user.agency
+            with_cachet = request.GET.get('with_cachet', 'false').lower() == 'true'
 
             # 2. تحديد مسار القالب (HTML Template)
             template_path = 'contracts/contract_pdf.html'
@@ -313,7 +314,21 @@ class ContractViewSet(viewsets.ModelViewSet):
                 km_supplementaires = max(0, km_parcourus - km_inclus_total)
                 montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
 
-            # 8. Building Context
+            # 8. Generating cachet base64
+            cachet_base64 = ""
+            if with_cachet and agency.cachet_signature:
+                try:
+                    img = Image.open(agency.cachet_signature).convert('RGBA')
+                    img.thumbnail((300, 150), Image.Resampling.LANCZOS)
+                    buffered = BytesIO()
+                    img.save(buffered, format="PNG", optimize=True)
+                    encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    cachet_base64 = f"data:image/png;base64,{encoded}"
+                except Exception as e:
+                    print("Error loading cachet: ", e)
+                    pass
+
+            # 9. Building Context
             context = {
                 'contract': contract,
                 'agency': agency,
@@ -332,15 +347,16 @@ class ContractViewSet(viewsets.ModelViewSet):
                 'km_inclus_total': km_inclus_total,
                 'km_supplementaires': km_supplementaires,
                 'montant_km_extra': montant_km_extra,
+                'cachet_base64': cachet_base64,
             }
 
-            # 9. Rendering Django HTML Template
+            # 10. Rendering Django HTML Template
             response = HttpResponse(content_type='application/pdf')
             response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
             template = get_template(template_path)
             html = template.render(context)
 
-            # 10. Generating PDF
+            # 11. Generating PDF
             pdf_file = HTML(string=html).write_pdf()
             response.write(pdf_file)
             return response

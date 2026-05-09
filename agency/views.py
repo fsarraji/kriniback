@@ -141,6 +141,7 @@ class AgencySettingsView(APIView):
             "km_extra_active": agency.km_extra_active,
             "km_par_jour": agency.km_par_jour,
             "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
+            "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
         })
 
     def put(self, request):
@@ -177,6 +178,9 @@ class AgencySettingsView(APIView):
             except (ValueError, TypeError):
                 pass
 
+        if 'cachet_signature' in request.FILES:
+            agency.cachet_signature = request.FILES['cachet_signature']
+
         agency.save()
         
         return Response({
@@ -186,4 +190,5 @@ class AgencySettingsView(APIView):
             "km_extra_active": agency.km_extra_active,
             "km_par_jour": agency.km_par_jour,
             "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
+            "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
         })

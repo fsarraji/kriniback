@@ -483,7 +483,15 @@
     </div>
     <div class="sig-box">
       <div class="sig-title">Cachet & Signature Agence</div>
-      <div class="sig-footer">Véhicule confié par : {{ contract.created_by.get_full_name|default:contract.created_by.username|default:"L'agent" }} de {{ agency.nom_agence|default:"l'agence" }}.</div>
+      <div class="sig-footer">
+        {% if cachet_base64 %}
+          <div style="text-align: center; margin-top: 5px; height: 100px;">
+            <img src="{{ cachet_base64 }}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+          </div>
+        {% else %}
+          Véhicule confié par : {{ contract.created_by.get_full_name|default:contract.created_by.username|default:"L'agent" }} de {{ agency.nom_agence|default:"l'agence" }}.
+        {% endif %}
+      </div>
     </div>
   </div>
 
