@@ -1,13 +1,12 @@
 from django.http import HttpResponse
 from django.template.loader import get_template
-from weasyprint import HTML
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 import os
-import tempfile
 import base64
+import requests
 from django.conf import settings
 from PIL import Image, ImageDraw, ImageFont
 import math
@@ -17,6 +16,13 @@ import barcode
 from barcode.writer import ImageWriter
 from .models import Contract, ContractDamage
 from .serializers import ContractSerializer
+
+
+def generate_pdf(html_string):
+    service_url = settings.PDF_SERVICE_URL.rstrip('/') + '/convert'
+    resp = requests.post(service_url, json={"html": html_string}, timeout=120)
+    resp.raise_for_status()
+    return resp.content
 
 def generate_fuel_gauge_image(level_str):
     if not level_str:
@@ -351,14 +357,14 @@ class ContractViewSet(viewsets.ModelViewSet):
             }
 
             # 10. Rendering Django HTML Template
-            response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
             template = get_template(template_path)
             html = template.render(context)
 
-            # 11. Generating PDF
-            pdf_file = HTML(string=html).write_pdf()
-            response.write(pdf_file)
+            # 11. Generating PDF (via external service or local fallback)
+            pdf_file = generate_pdf(html)
+
+            response = HttpResponse(pdf_file, content_type='application/pdf')
+            response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
             return response
 
         except Exception as e:
@@ -402,20 +408,18 @@ class ContractViewSet(viewsets.ModelViewSet):
             'whatsapp_qr_base64': whatsapp_qr_base64,
         }
 
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="Recu_Reservation_{contract.id}.pdf"'
-
         template = get_template(template_path)
         html = template.render(context)
 
         try:
-            pdf_file = HTML(string=html).write_pdf()
-            response.write(pdf_file)
+            pdf_file = generate_pdf(html)
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
             print("PDF GENERATION ERROR: ", error_details)
             return Response(f'عذراً، حدث خطأ أثناء توليد ملف الـ PDF: {str(e)}\nDetails: {error_details}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="Recu_Reservation_{contract.id}.pdf"'
         return response
 

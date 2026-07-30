@@ -167,6 +167,8 @@ REST_FRAMEWORK = {
     ],
 }
 
+PDF_SERVICE_URL = os.getenv('PDF_SERVICE_URL', 'http://localhost:8001')
+
 # 2. إعدادات مكتبة SimpleJWT (تحديد مدة صلاحية التوكن)
 from datetime import timedelta
 
