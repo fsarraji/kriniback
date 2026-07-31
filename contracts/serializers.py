@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Contract, ContractDamage
+from .models import Contract, ContractDamage, PdfJob
 from django.db.models import Q
 
 class ContractDamageSerializer(serializers.ModelSerializer):
@@ -7,6 +7,12 @@ class ContractDamageSerializer(serializers.ModelSerializer):
         model = ContractDamage
         fields = ['id', 'type', 'x', 'y', 'description', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+class PdfJobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PdfJob
+        fields = ['id', 'contract', 'job_type', 'with_cachet', 'status', 'error_message', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'status', 'error_message', 'created_at', 'updated_at']
 
 class ContractSerializer(serializers.ModelSerializer):
     damages = ContractDamageSerializer(many=True, required=False)

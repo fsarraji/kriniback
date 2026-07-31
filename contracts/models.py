@@ -120,3 +120,28 @@ class ContractDamage(models.Model):
 
     def __str__(self):
         return f"Damage {self.type} for Contract {self.contract.id} at ({self.x}, {self.y})"
+
+
+class PdfJob(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'En attente'),
+        ('PROCESSING', 'En cours'),
+        ('READY', 'Prêt'),
+        ('ERROR', 'Erreur'),
+    ]
+    JOB_TYPES = [
+        ('contract', 'Contrat'),
+        ('receipt', 'Reçu réservation'),
+    ]
+
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='pdf_jobs')
+    job_type = models.CharField(max_length=20, choices=JOB_TYPES)
+    with_cachet = models.BooleanField(default=False, verbose_name="Avec cachet")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    error_message = models.TextField(null=True, blank=True)
+    pdf_file = models.FileField(upload_to='pdf_jobs/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"PdfJob #{self.id} - {self.job_type} - Contract {self.contract.id} - {self.status}"

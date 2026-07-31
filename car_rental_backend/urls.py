@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView # استدعاء لوحة القيادة
 from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet
 from clients.views import ClientViewSet
-from contracts.views import ContractViewSet
+from contracts.views import ContractViewSet, PdfJobViewSet
 from payments.views import PaymentViewSet
 from expenses.views import ExpenseViewSet
 
@@ -18,6 +18,7 @@ router.register(r'brands', BrandViewSet, basename='brand')
 router.register(r'modelcars', ModelCarViewSet, basename='modelcar')
 router.register(r'clients', ClientViewSet, basename='client')
 router.register(r'contracts', ContractViewSet, basename='contract')
+router.register(r'pdf-jobs', PdfJobViewSet, basename='pdf-job')
 router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'expenses', ExpenseViewSet, basename='expense')
 router.register(r'public-vehicles', PublicVehicleViewSet, basename='public-vehicle')

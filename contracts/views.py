@@ -4,9 +4,13 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
+from django.core.files.base import ContentFile
+from django.shortcuts import get_object_or_404
 import os
 import base64
 import requests
+import threading
+import traceback
 from django.conf import settings
 from PIL import Image, ImageDraw, ImageFont
 import math
@@ -14,8 +18,8 @@ from io import BytesIO
 import qrcode
 import barcode
 from barcode.writer import ImageWriter
-from .models import Contract, ContractDamage
-from .serializers import ContractSerializer
+from .models import Contract, ContractDamage, PdfJob
+from .serializers import ContractSerializer, PdfJobSerializer
 
 
 def generate_pdf(html_string):
@@ -92,6 +96,196 @@ def generate_fuel_gauge_image(level_str):
     img.save(buffered, format="JPEG", quality=70, optimize=True)
     img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
     return f"data:image/jpeg;base64,{img_str}"
+
+
+def build_contract_pdf(contract, agency, with_cachet=False):
+    template_path = 'contracts/contract_pdf.html'
+    car_diagram_path = os.path.join(settings.BASE_DIR, 'car_damage_diagram.png')
+    depart_damages = contract.damages.filter(type='DEPART')
+    retour_damages = contract.damages.filter(type='RETOUR')
+
+    # Generating diagram base64
+    def build_diagram_base64(damages, dot_color='red'):
+        if not os.path.exists(car_diagram_path):
+            return ""
+        try:
+            img = Image.open(car_diagram_path).convert('RGB')
+            img.thumbnail((250, 250), Image.Resampling.LANCZOS)
+            if damages.exists():
+                draw = ImageDraw.Draw(img)
+                w, h = img.size
+                try:
+                    font = ImageFont.truetype("arial.ttf", size=int(w * 0.08))
+                except IOError:
+                    font = ImageFont.load_default()
+                for i, dmg in enumerate(damages):
+                    x_px = (dmg.x / 100.0) * w
+                    y_px = (dmg.y / 100.0) * h
+                    radius = w * 0.04
+                    draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
+                    draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG", quality=75, optimize=True)
+            encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            return f"data:image/jpeg;base64,{encoded}"
+        except Exception:
+            return ""
+
+    car_diagram_base64 = build_diagram_base64(depart_damages, dot_color='red')
+    retour_diagram_base64 = build_diagram_base64(retour_damages, dot_color='orange')
+
+    # Generating fuel gauges
+    fuel_depart_base64 = generate_fuel_gauge_image(contract.carburant_sortie)
+    fuel_retour_base64 = generate_fuel_gauge_image(contract.carburant_retour)
+
+    # Generating QR code
+    whatsapp_qr_base64 = ""
+    if agency.telephone:
+        phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
+        if phone.startswith('0'):
+            phone = '212' + phone[1:]
+        elif phone.startswith('+'):
+            phone = phone[1:]
+        if phone:
+            wa_link = f"https://wa.me/{phone}"
+            try:
+                qr = qrcode.QRCode(version=1, box_size=10, border=1)
+                qr.add_data(wa_link)
+                qr.make(fit=True)
+                qr_img = qr.make_image(fill_color="#111827", back_color="white")
+                qr_buf = BytesIO()
+                qr_img.save(qr_buf, format="PNG")
+                qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
+                whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
+            except Exception:
+                pass
+
+    # Generating Barcode
+    contract_barcode_base64 = ""
+    try:
+        code_str = str(contract.id).zfill(4)
+        COD128 = barcode.get_barcode_class('code128')
+        bar = COD128(code_str, writer=ImageWriter())
+        bar_buf = BytesIO()
+        bar.write(bar_buf, options={"write_text": False, "module_height": 5.0, "module_width": 0.25})
+        bar_b64 = base64.b64encode(bar_buf.getvalue()).decode('utf-8')
+        contract_barcode_base64 = f"data:image/png;base64,{bar_b64}"
+    except Exception:
+        pass
+
+    # Calculating Finances
+    km_parcourus = contract.km_retour - contract.km_sortie if contract.km_retour else None
+    agency_km_extra_active = agency.km_extra_active
+    agency_km_par_jour = agency.km_par_jour
+    km_tarif_extra = float(contract.vehicle.tarif_km_extra or agency.km_tarif_extra_defaut or 1.5)
+    km_inclus_total = (agency_km_par_jour * contract.jours) if agency_km_extra_active else None
+    km_supplementaires = None
+    montant_km_extra = None
+    if agency_km_extra_active and km_parcourus is not None and km_inclus_total is not None:
+        km_supplementaires = max(0, km_parcourus - km_inclus_total)
+        montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
+
+    # Generating cachet base64
+    cachet_base64 = ""
+    if with_cachet and agency.cachet_signature:
+        try:
+            img = Image.open(agency.cachet_signature).convert('RGBA')
+            img.thumbnail((300, 150), Image.Resampling.LANCZOS)
+            buffered = BytesIO()
+            img.save(buffered, format="PNG", optimize=True)
+            encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            cachet_base64 = f"data:image/png;base64,{encoded}"
+        except Exception as e:
+            print("Error loading cachet: ", e)
+
+    # Building Context
+    context = {
+        'contract': contract,
+        'agency': agency,
+        'car_diagram_base64': car_diagram_base64,
+        'retour_diagram_base64': retour_diagram_base64,
+        'depart_damages': depart_damages,
+        'retour_damages': retour_damages,
+        'fuel_depart_base64': fuel_depart_base64,
+        'fuel_retour_base64': fuel_retour_base64,
+        'whatsapp_qr_base64': whatsapp_qr_base64,
+        'contract_barcode_base64': contract_barcode_base64,
+        'km_parcourus': km_parcourus,
+        'agency_km_extra_active': agency_km_extra_active,
+        'agency_km_par_jour': agency_km_par_jour,
+        'km_tarif_extra': km_tarif_extra,
+        'km_inclus_total': km_inclus_total,
+        'km_supplementaires': km_supplementaires,
+        'montant_km_extra': montant_km_extra,
+        'cachet_base64': cachet_base64,
+    }
+
+    template = get_template(template_path)
+    html = template.render(context)
+    return generate_pdf(html)
+
+
+def build_receipt_pdf(contract, agency):
+    template_path = 'contracts/reservation_receipt_pdf.html'
+
+    whatsapp_qr_base64 = ""
+    if agency.telephone:
+        phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
+        if phone.startswith('0'):
+            phone = '212' + phone[1:]
+        elif phone.startswith('+'):
+            phone = phone[1:]
+        if phone:
+            wa_link = f"https://wa.me/{phone}"
+            try:
+                qr = qrcode.QRCode(version=1, box_size=10, border=1)
+                qr.add_data(wa_link)
+                qr.make(fit=True)
+                qr_img = qr.make_image(fill_color="#111827", back_color="white")
+                qr_buf = BytesIO()
+                qr_img.save(qr_buf, format="PNG")
+                qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
+                whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
+            except Exception as e:
+                print("Error generating QR code:", e)
+
+    context = {
+        'contract': contract,
+        'agency': agency,
+        'whatsapp_qr_base64': whatsapp_qr_base64,
+    }
+
+    template = get_template(template_path)
+    html = template.render(context)
+    return generate_pdf(html)
+
+
+def process_pdf_job(job_id):
+    try:
+        job = PdfJob.objects.get(id=job_id)
+        job.status = 'PROCESSING'
+        job.save(update_fields=['status', 'updated_at'])
+
+        contract = job.contract
+        agency = contract.agency
+
+        if job.job_type == 'contract':
+            pdf_bytes = build_contract_pdf(contract, agency, job.with_cachet)
+            filename = f"contrat_{contract.id}.pdf"
+        else:
+            pdf_bytes = build_receipt_pdf(contract, agency)
+            filename = f"recu_{contract.id}.pdf"
+
+        job.pdf_file.save(filename, ContentFile(pdf_bytes), save=False)
+        job.status = 'READY'
+        job.error_message = None
+        job.save()
+    except Exception as e:
+        traceback.print_exc()
+        PdfJob.objects.filter(id=job_id).update(
+            status='ERROR',
+            error_message=str(e),
+        )
 
 class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
@@ -225,143 +419,11 @@ class ContractViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def print_contract(self, request, pk=None):
         try:
-            # 1. جلب العقد المطلوب
             contract = self.get_object()
             agency = request.user.agency
             with_cachet = request.GET.get('with_cachet', 'false').lower() == 'true'
 
-            # 2. تحديد مسار القالب (HTML Template)
-            template_path = 'contracts/contract_pdf.html'
-            car_diagram_path = os.path.join(settings.BASE_DIR, 'car_damage_diagram.png')
-            depart_damages = contract.damages.filter(type='DEPART')
-            retour_damages = contract.damages.filter(type='RETOUR')
-
-            # 3. Generating diagram base64
-            def build_diagram_base64(damages, dot_color='red'):
-                if not os.path.exists(car_diagram_path):
-                    return ""
-                try:
-                    img = Image.open(car_diagram_path).convert('RGB')
-                    # Significant reduction: 250px is enough for A4 printing
-                    img.thumbnail((250, 250), Image.Resampling.LANCZOS)
-                    if damages.exists():
-                        draw = ImageDraw.Draw(img)
-                        w, h = img.size
-                        try:
-                            font = ImageFont.truetype("arial.ttf", size=int(w * 0.08))
-                        except IOError:
-                            font = ImageFont.load_default()
-                        for i, dmg in enumerate(damages):
-                            x_px = (dmg.x / 100.0) * w
-                            y_px = (dmg.y / 100.0) * h
-                            radius = w * 0.04
-                            draw.ellipse((x_px - radius, y_px - radius, x_px + radius, y_px + radius), fill=dot_color)
-                            draw.text((x_px, y_px), str(i + 1), fill='white', font=font, anchor="mm")
-                    buffered = BytesIO()
-                    # JPEG is MUCH lighter in base64 than PNG
-                    img.save(buffered, format="JPEG", quality=75, optimize=True)
-                    encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                    return f"data:image/jpeg;base64,{encoded}"
-                except Exception:
-                    return ""
-
-            car_diagram_base64 = build_diagram_base64(depart_damages, dot_color='red')
-            retour_diagram_base64 = build_diagram_base64(retour_damages, dot_color='orange')
-                
-            # 4. Generating fuel gauges
-            fuel_depart_base64 = generate_fuel_gauge_image(contract.carburant_sortie)
-            fuel_retour_base64 = generate_fuel_gauge_image(contract.carburant_retour)
-
-            # 5. Generating QR code
-            whatsapp_qr_base64 = ""
-            if agency.telephone:
-                phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
-                if phone.startswith('0'):
-                    phone = '212' + phone[1:]
-                elif phone.startswith('+'):
-                    phone = phone[1:]
-                
-                if phone:
-                    wa_link = f"https://wa.me/{phone}"
-                    try:
-                        qr = qrcode.QRCode(version=1, box_size=10, border=1)
-                        qr.add_data(wa_link)
-                        qr.make(fit=True)
-                        qr_img = qr.make_image(fill_color="#111827", back_color="white")
-                        qr_buf = BytesIO()
-                        qr_img.save(qr_buf, format="PNG")
-                        qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
-                        whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
-                    except Exception:
-                        pass
-
-            # 6. Generating Barcode
-            contract_barcode_base64 = ""
-            try:
-                code_str = str(contract.id).zfill(4)
-                COD128 = barcode.get_barcode_class('code128')
-                bar = COD128(code_str, writer=ImageWriter())
-                bar_buf = BytesIO()
-                bar.write(bar_buf, options={"write_text": False, "module_height": 5.0, "module_width": 0.25})
-                bar_b64 = base64.b64encode(bar_buf.getvalue()).decode('utf-8')
-                contract_barcode_base64 = f"data:image/png;base64,{bar_b64}"
-            except Exception:
-                pass
-
-            # 7. Calculating Finances
-            km_parcourus = contract.km_retour - contract.km_sortie if contract.km_retour else None
-            agency_km_extra_active = agency.km_extra_active
-            agency_km_par_jour = agency.km_par_jour
-            km_tarif_extra = float(contract.vehicle.tarif_km_extra or agency.km_tarif_extra_defaut or 1.5)
-            km_inclus_total = (agency_km_par_jour * contract.jours) if agency_km_extra_active else None
-            km_supplementaires = None
-            montant_km_extra = None
-            if agency_km_extra_active and km_parcourus is not None and km_inclus_total is not None:
-                km_supplementaires = max(0, km_parcourus - km_inclus_total)
-                montant_km_extra = round(km_supplementaires * km_tarif_extra, 2) if km_supplementaires > 0 else 0
-
-            # 8. Generating cachet base64
-            cachet_base64 = ""
-            if with_cachet and agency.cachet_signature:
-                try:
-                    img = Image.open(agency.cachet_signature).convert('RGBA')
-                    img.thumbnail((300, 150), Image.Resampling.LANCZOS)
-                    buffered = BytesIO()
-                    img.save(buffered, format="PNG", optimize=True)
-                    encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                    cachet_base64 = f"data:image/png;base64,{encoded}"
-                except Exception as e:
-                    print("Error loading cachet: ", e)
-                    pass
-
-            # 9. Building Context
-            context = {
-                'contract': contract,
-                'agency': agency,
-                'car_diagram_base64': car_diagram_base64,
-                'retour_diagram_base64': retour_diagram_base64,
-                'depart_damages': depart_damages,
-                'retour_damages': retour_damages,
-                'fuel_depart_base64': fuel_depart_base64,
-                'fuel_retour_base64': fuel_retour_base64,
-                'whatsapp_qr_base64': whatsapp_qr_base64,
-                'contract_barcode_base64': contract_barcode_base64,
-                'km_parcourus': km_parcourus,
-                'agency_km_extra_active': agency_km_extra_active,
-                'agency_km_par_jour': agency_km_par_jour,
-                'km_tarif_extra': km_tarif_extra,
-                'km_inclus_total': km_inclus_total,
-                'km_supplementaires': km_supplementaires,
-                'montant_km_extra': montant_km_extra,
-                'cachet_base64': cachet_base64,
-            }
-
-            # 10. Rendering Django HTML Template
-            template = get_template(template_path)
-            html = template.render(context)
-
-            # 11. Generating PDF (via external service or local fallback)
-            pdf_file = generate_pdf(html)
+            pdf_file = build_contract_pdf(contract, agency, with_cachet)
 
             response = HttpResponse(pdf_file, content_type='application/pdf')
             response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'
@@ -378,41 +440,9 @@ class ContractViewSet(viewsets.ModelViewSet):
     def print_reservation_receipt(self, request, pk=None):
         contract = self.get_object()
         agency = request.user.agency
-        template_path = 'contracts/reservation_receipt_pdf.html'
-
-        # Generate WhatsApp QR code
-        whatsapp_qr_base64 = ""
-        if agency.telephone:
-            phone = agency.telephone.replace(' ', '').replace('-', '').replace('.', '')
-            if phone.startswith('0'):
-                phone = '212' + phone[1:]
-            elif phone.startswith('+'):
-                phone = phone[1:]
-            if phone:
-                wa_link = f"https://wa.me/{phone}"
-                try:
-                    qr = qrcode.QRCode(version=1, box_size=10, border=1)
-                    qr.add_data(wa_link)
-                    qr.make(fit=True)
-                    qr_img = qr.make_image(fill_color="#111827", back_color="white")
-                    qr_buf = BytesIO()
-                    qr_img.save(qr_buf, format="PNG")
-                    qr_b64 = base64.b64encode(qr_buf.getvalue()).decode('utf-8')
-                    whatsapp_qr_base64 = f"data:image/png;base64,{qr_b64}"
-                except Exception as e:
-                    print("Error generating QR code:", e)
-
-        context = {
-            'contract': contract,
-            'agency': agency,
-            'whatsapp_qr_base64': whatsapp_qr_base64,
-        }
-
-        template = get_template(template_path)
-        html = template.render(context)
 
         try:
-            pdf_file = generate_pdf(html)
+            pdf_file = build_receipt_pdf(contract, agency)
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
@@ -421,5 +451,32 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         response = HttpResponse(pdf_file, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="Recu_Reservation_{contract.id}.pdf"'
+        return response
+
+
+class PdfJobViewSet(viewsets.ModelViewSet):
+    serializer_class = PdfJobSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return PdfJob.objects.filter(contract__agency=self.request.user.agency).order_by('-id')
+
+    def perform_create(self, serializer):
+        contract = get_object_or_404(Contract, pk=self.request.data.get('contract'), agency=self.request.user.agency)
+        job = serializer.save(contract=contract)
+        thread = threading.Thread(target=process_pdf_job, args=(job.id,), daemon=True)
+        thread.start()
+
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        job = self.get_object()
+        if job.status != 'READY' or not job.pdf_file:
+            return Response(
+                {'detail': 'Le PDF n\'est pas encore prêt.', 'status': job.status},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        response = HttpResponse(job.pdf_file.read(), content_type='application/pdf')
+        filename = f"contrat_{job.contract.id}.pdf" if job.job_type == 'contract' else f"recu_{job.contract.id}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
         return response
 
