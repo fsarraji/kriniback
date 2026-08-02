@@ -43,7 +43,7 @@ class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservation
         fields = ['id', 'client', 'client_name', 'vehicle', 'vehicle_name', 'agency', 'agency_name', 'date_sortie', 'date_retour_prevue', 'prix_par_jour', 'statut', 'notes', 'created_at', 'formatted_dates']
-        read_only_fields = ['id', 'client', 'agency', 'prix_par_jour', 'statut', 'created_at']
+        read_only_fields = ['id', 'client', 'agency', 'prix_par_jour', 'created_at']
 
     def get_client_name(self, obj):
         return f"{obj.client.prenom} {obj.client.nom}"
@@ -59,7 +59,8 @@ class ReservationSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        vehicle = data.get('vehicle')
+        instance = self.instance
+        vehicle = data.get('vehicle') or (instance.vehicle if instance else None)
         date_sortie = data.get('date_sortie')
         date_retour_prevue = data.get('date_retour_prevue')
 
@@ -84,8 +85,10 @@ class ReservationSerializer(serializers.ModelSerializer):
                 statut__in=['PENDING', 'CONFIRMED'],
                 date_sortie__lt=date_retour_prevue,
                 date_retour_prevue__gt=date_sortie,
-            ).exists()
-            if overlapping_reservations:
+            )
+            if instance:
+                overlapping_reservations = overlapping_reservations.exclude(pk=instance.pk)
+            if overlapping_reservations.exists():
                 raise serializers.ValidationError("Ce véhicule a déjà une réservation en cours pour cette période.")
 
         return data
