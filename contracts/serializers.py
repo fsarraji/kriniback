@@ -38,10 +38,11 @@ class ReservationSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
     vehicle_name = serializers.SerializerMethodField()
     formatted_dates = serializers.SerializerMethodField()
+    agency_name = serializers.CharField(source='agency.nom_agence', read_only=True)
 
     class Meta:
         model = Reservation
-        fields = ['id', 'client', 'client_name', 'vehicle', 'vehicle_name', 'agency', 'date_sortie', 'date_retour_prevue', 'prix_par_jour', 'statut', 'notes', 'created_at', 'formatted_dates']
+        fields = ['id', 'client', 'client_name', 'vehicle', 'vehicle_name', 'agency', 'agency_name', 'date_sortie', 'date_retour_prevue', 'prix_par_jour', 'statut', 'notes', 'created_at', 'formatted_dates']
         read_only_fields = ['id', 'client', 'agency', 'prix_par_jour', 'statut', 'created_at']
 
     def get_client_name(self, obj):
