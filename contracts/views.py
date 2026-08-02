@@ -531,6 +531,11 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
             if reservation.statut != 'PENDING' or request.data.get('statut') != 'CANCELLED':
                 return Response({'detail': 'Vous ne pouvez qu\'annuler une réservation en attente.'}, status=status.HTTP_403_FORBIDDEN)
+        else:
+            # Rétrocompatibilité : PATCH statut=CONFIRMED sur une réservation en attente
+            # crée aussi le contrat (anciennes versions de l'app mobile).
+            if request.data.get('statut') == 'CONFIRMED' and reservation.statut == 'PENDING':
+                return self.confirm(request)
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
