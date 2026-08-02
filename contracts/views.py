@@ -18,8 +18,8 @@ from io import BytesIO
 import qrcode
 import barcode
 from barcode.writer import ImageWriter
-from .models import Contract, ContractDamage, PdfJob
-from .serializers import ContractSerializer, PdfJobSerializer
+from .models import Contract, ContractDamage, PdfJob, BookingRequest
+from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSerializer
 
 
 def generate_pdf(html_string):
@@ -292,9 +292,17 @@ class ContractViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        base = Contract.objects.select_related(
+            'client',
+            'vehicle__marque',
+            'vehicle__modele',
+            'deuxieme_chauffeur',
+            'agency',
+            'created_by',
+        ).prefetch_related('damages').order_by('-date_creation')
         if self.request.user.is_superuser:
-            return Contract.objects.all().order_by('-date_creation')
-        return Contract.objects.filter(agency=self.request.user.agency).order_by('-date_creation')
+            return base
+        return base.filter(agency=self.request.user.agency)
 
     def perform_create(self, serializer):
         serializer.save(agency=self.request.user.agency, created_by=self.request.user)
@@ -452,6 +460,26 @@ class ContractViewSet(viewsets.ModelViewSet):
         response = HttpResponse(pdf_file, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="Recu_Reservation_{contract.id}.pdf"'
         return response
+
+
+class BookingRequestViewSet(viewsets.ModelViewSet):
+    """
+    Demandes de réservation des clients (leads).
+
+    - La création (POST) est publique : les clients peuvent réserver sans compte.
+    - La consultation et la gestion (GET/PATCH) sont réservées au personnel de l'agence.
+    """
+    serializer_class = BookingRequestSerializer
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return BookingRequest.objects.all()
+        return BookingRequest.objects.filter(agency=self.request.user.agency)
 
 
 class PdfJobViewSet(viewsets.ModelViewSet):

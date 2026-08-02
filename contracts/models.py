@@ -122,6 +122,33 @@ class ContractDamage(models.Model):
         return f"Damage {self.type} for Contract {self.contract.id} at ({self.x}, {self.y})"
 
 
+class BookingRequest(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'En attente'),
+        ('CONTACTED', 'Contacté'),
+        ('CONFIRMED', 'Confirmé'),
+        ('CANCELLED', 'Annulé'),
+    ]
+
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='booking_requests', verbose_name="Agence")
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True, blank=True, related_name='booking_requests', verbose_name="Véhicule")
+    nom = models.CharField(max_length=50, verbose_name="Nom")
+    prenom = models.CharField(max_length=50, verbose_name="Prénom")
+    telephone = models.CharField(max_length=20, verbose_name="Téléphone")
+    email = models.EmailField(null=True, blank=True, verbose_name="Email")
+    message = models.TextField(null=True, blank=True, verbose_name="Message")
+    date_sortie = models.DateTimeField(verbose_name="Date de sortie souhaitée")
+    date_retour_prevue = models.DateTimeField(verbose_name="Date de retour souhaitée")
+    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Statut")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Demande #{self.id} - {self.nom} {self.prenom}"
+
+
 class PdfJob(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'En attente'),

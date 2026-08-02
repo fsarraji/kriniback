@@ -1,6 +1,37 @@
 from rest_framework import serializers
-from .models import Contract, ContractDamage, PdfJob
+from .models import Contract, ContractDamage, PdfJob, BookingRequest
 from django.db.models import Q
+
+
+class BookingRequestSerializer(serializers.ModelSerializer):
+    vehicle_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BookingRequest
+        fields = ['id', 'agency', 'vehicle', 'vehicle_name', 'nom', 'prenom', 'telephone', 'email', 'message', 'date_sortie', 'date_retour_prevue', 'statut', 'created_at']
+        read_only_fields = ['id', 'agency', 'statut', 'created_at']
+
+    def get_vehicle_name(self, obj):
+        if not obj.vehicle:
+            return None
+        return f"{obj.vehicle.marque} {obj.vehicle.modele} - {obj.vehicle.matricule}"
+
+    def validate(self, data):
+        vehicle = data.get('vehicle')
+        if not vehicle:
+            raise serializers.ValidationError({'vehicle': 'Le véhicule est requis.'})
+
+        date_sortie = data.get('date_sortie')
+        date_retour_prevue = data.get('date_retour_prevue')
+        if date_sortie and date_retour_prevue and date_retour_prevue <= date_sortie:
+            raise serializers.ValidationError("La date de retour doit être postérieure à la date de sortie.")
+
+        return data
+
+    def create(self, validated_data):
+        vehicle = validated_data['vehicle']
+        validated_data['agency'] = vehicle.agency
+        return super().create(validated_data)
 
 class ContractDamageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,7 +135,9 @@ class ContractSerializer(serializers.ModelSerializer):
         return data
 
     def get_client_initials(self, obj):
-        return f"{obj.client.nom[0]}{obj.client.prenom[0]}"
+        n = (obj.client.nom or '')
+        p = (obj.client.prenom or '')
+        return f"{n[0] if n else ''}{p[0] if p else ''}"
 
     def get_vehicle_name(self, obj):
         return f"{obj.vehicle.marque} {obj.vehicle.modele}"
