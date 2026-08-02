@@ -13,9 +13,9 @@ class VehicleViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['statut', 'carburant', 'marque']
-    search_fields = ['matricule', 'marque', 'modele']
-    ordering_fields = ['prix_par_jour', 'kilometrage']
+    filterset_fields = ['statut', 'carburant', 'marque', 'annee']
+    search_fields = ['matricule', 'marque__name', 'modele__name']
+    ordering_fields = ['prix_par_jour', 'kilometrage', 'annee', 'id']
 
     def get_queryset(self):
         base = Vehicle.objects.select_related('marque', 'modele', 'agency')

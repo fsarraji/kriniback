@@ -1,6 +1,6 @@
 from django.http import HttpResponse
 from django.template.loader import get_template
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
@@ -18,6 +18,7 @@ from io import BytesIO
 import qrcode
 import barcode
 from barcode.writer import ImageWriter
+from django_filters.rest_framework import DjangoFilterBackend
 from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
 from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSerializer, ReservationSerializer
 
@@ -291,6 +292,11 @@ class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['statut', 'client', 'vehicle']
+    search_fields = ['client__nom', 'client__prenom', 'client__telephone', 'vehicle__matricule', 'vehicle__marque__name', 'vehicle__modele__name']
+    ordering_fields = ['date_creation', 'montant_total', 'date_sortie', 'date_retour_prevue']
+
     def get_queryset(self):
         base = Contract.objects.select_related(
             'client',
@@ -471,6 +477,11 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
     """
     serializer_class = BookingRequestSerializer
 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['statut']
+    search_fields = ['nom', 'prenom', 'telephone', 'email', 'vehicle__matricule']
+    ordering_fields = ['created_at', 'statut']
+
     def get_permissions(self):
         if self.action == 'create':
             return [permissions.AllowAny()]
@@ -491,6 +502,11 @@ class ReservationViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ReservationSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['statut']
+    search_fields = ['client__nom', 'client__prenom', 'client__telephone', 'vehicle__matricule', 'vehicle__marque__name', 'vehicle__modele__name']
+    ordering_fields = ['created_at', 'date_sortie', 'prix_par_jour']
 
     def get_queryset(self):
         if self.request.user.role == 'CLIENT':

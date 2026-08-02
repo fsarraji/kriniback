@@ -12,8 +12,9 @@ from fleet.models import Vehicle
 from contracts.models import Contract
 from clients.models import Client
 from .models import Agency, CustomUser
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, viewsets, filters
 from rest_framework.permissions import IsAdminUser
+from django_filters.rest_framework import DjangoFilterBackend
 
 class AgencySerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,11 +49,18 @@ class AgencyViewSet(viewsets.ModelViewSet):
     queryset = Agency.objects.all()
     serializer_class = AgencySerializer
     permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['nom_agence', 'adresse', 'telephone', 'email', 'rc', 'ice']
+    ordering_fields = ['nom_agence', 'id']
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['role', 'agency', 'is_active']
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    ordering_fields = ['username', 'id']
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):

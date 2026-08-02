@@ -165,6 +165,8 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS':[
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'car_rental_backend.pagination.StandardPagination',
+    'PAGE_SIZE': 20,
 }
 
 PDF_SERVICE_URL = os.getenv('PDF_SERVICE_URL', 'http://localhost:8001')
