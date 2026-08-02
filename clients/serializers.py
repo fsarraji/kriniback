@@ -11,7 +11,7 @@ class ClientSerializer(serializers.ModelSerializer):
         read_only_fields = ['agency']
 
     def get_last_rental(self, obj):
-        last_contract = Contract.objects.filter(client=obj).order_by('-date_creation').first()
+        last_contract = next((c for c in obj.contracts.all()), None)
         if last_contract:
             return {
                 'vehicle': f"{last_contract.vehicle.marque} {last_contract.vehicle.modele}",

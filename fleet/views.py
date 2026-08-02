@@ -18,9 +18,10 @@ class VehicleViewSet(viewsets.ModelViewSet):
     ordering_fields = ['prix_par_jour', 'kilometrage']
 
     def get_queryset(self):
+        base = Vehicle.objects.select_related('marque', 'modele', 'agency')
         if self.request.user.is_superuser:
-            return Vehicle.objects.all()
-        return Vehicle.objects.filter(agency=self.request.user.agency)
+            return base
+        return base.filter(agency=self.request.user.agency)
 
     def perform_create(self, serializer):
         agency = self.request.user.agency
@@ -81,6 +82,6 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
     
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['carburant', 'marque', 'marque__name', 'modele__name', 'agency__name']
-    search_fields = ['marque__name', 'modele__name', 'agency__name']
+    filterset_fields = ['carburant', 'marque', 'marque__name', 'modele__name', 'agency__nom_agence']
+    search_fields = ['marque__name', 'modele__name', 'agency__nom_agence']
     ordering_fields = ['prix_par_jour', 'annee']
