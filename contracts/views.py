@@ -535,7 +535,11 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         if request.user.role == 'CLIENT':
-            return Response({'detail': 'Action non autorisée.'}, status=status.HTTP_403_FORBIDDEN)
+            reservation = self.get_object()
+            if reservation.client != getattr(request.user, 'client_profile', None):
+                return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            if reservation.statut != 'PENDING':
+                return Response({'detail': 'Vous ne pouvez supprimer qu\'une réservation en attente.'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'])
