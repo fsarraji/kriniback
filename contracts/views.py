@@ -18,7 +18,7 @@ from io import BytesIO
 import qrcode
 import barcode
 from barcode.writer import ImageWriter
-from .models import Contract, ContractDamage, PdfJob, BookingRequest
+from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
 from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSerializer, ReservationSerializer
 
 
