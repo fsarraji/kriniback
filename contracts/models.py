@@ -149,6 +149,30 @@ class BookingRequest(models.Model):
         return f"Demande #{self.id} - {self.nom} {self.prenom}"
 
 
+class Reservation(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'En attente'),
+        ('CONFIRMED', 'Confirmée'),
+        ('CANCELLED', 'Annulée'),
+    ]
+
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='reservations', verbose_name="Client")
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='reservations', verbose_name="Véhicule")
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='reservations', verbose_name="Agence")
+    date_sortie = models.DateTimeField(verbose_name="Date de sortie")
+    date_retour_prevue = models.DateTimeField(verbose_name="Date de retour prévue")
+    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Prix par jour")
+    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Statut")
+    notes = models.TextField(null=True, blank=True, verbose_name="Notes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Réservation #{self.id} - {self.client.nom} - {self.vehicle.matricule}"
+
+
 class PdfJob(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'En attente'),

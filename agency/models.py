@@ -30,6 +30,7 @@ class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('OWNER', 'Gérant / Propriétaire'),
         ('EMPLOYEE', 'Employé'),
+        ('CLIENT', 'Client'),
     )
     
     # link user to agency

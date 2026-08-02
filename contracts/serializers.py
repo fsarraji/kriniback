@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Contract, ContractDamage, PdfJob, BookingRequest
+from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
 from django.db.models import Q
 
 
@@ -31,6 +31,78 @@ class BookingRequestSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         vehicle = validated_data['vehicle']
         validated_data['agency'] = vehicle.agency
+        return super().create(validated_data)
+
+
+class ReservationSerializer(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+    vehicle_name = serializers.SerializerMethodField()
+    formatted_dates = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Reservation
+        fields = ['id', 'client', 'client_name', 'vehicle', 'vehicle_name', 'agency', 'date_sortie', 'date_retour_prevue', 'prix_par_jour', 'statut', 'notes', 'created_at', 'formatted_dates']
+        read_only_fields = ['id', 'client', 'agency', 'prix_par_jour', 'statut', 'created_at']
+
+    def get_client_name(self, obj):
+        return f"{obj.client.prenom} {obj.client.nom}"
+
+    def get_vehicle_name(self, obj):
+        return f"{obj.vehicle.marque} {obj.vehicle.modele} - {obj.vehicle.matricule}"
+
+    def get_formatted_dates(self, obj):
+        return {
+            'sortie': obj.date_sortie.strftime('%b %d'),
+            'retour': obj.date_retour_prevue.strftime('%b %d'),
+            'range': f"{obj.date_sortie.strftime('%b %d')} — {obj.date_retour_prevue.strftime('%b %d')}"
+        }
+
+    def validate(self, data):
+        vehicle = data.get('vehicle')
+        date_sortie = data.get('date_sortie')
+        date_retour_prevue = data.get('date_retour_prevue')
+
+        if not vehicle:
+            raise serializers.ValidationError({'vehicle': 'Le véhicule est requis.'})
+        if date_sortie and date_retour_prevue and date_retour_prevue <= date_sortie:
+            raise serializers.ValidationError("La date de retour doit être postérieure à la date de sortie.")
+
+        # Vérifier les chevauchements : contrats actifs/réservés + réservations en attente/confirmées
+        if date_sortie and date_retour_prevue:
+            overlapping_contracts = Contract.objects.filter(
+                vehicle=vehicle,
+                statut__in=['RESERVE', 'EN_COURS'],
+                date_sortie__lt=date_retour_prevue,
+                date_retour_prevue__gt=date_sortie,
+            ).exists()
+            if overlapping_contracts:
+                raise serializers.ValidationError("Ce véhicule est déjà réservé ou loué pour cette période.")
+
+            overlapping_reservations = Reservation.objects.filter(
+                vehicle=vehicle,
+                statut__in=['PENDING', 'CONFIRMED'],
+                date_sortie__lt=date_retour_prevue,
+                date_retour_prevue__gt=date_sortie,
+            ).exists()
+            if overlapping_reservations:
+                raise serializers.ValidationError("Ce véhicule a déjà une réservation en cours pour cette période.")
+
+        return data
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        client = getattr(request.user, 'client_profile', None) if request else None
+        if not client:
+            raise serializers.ValidationError({'detail': 'Compte client requis pour créer une réservation.'})
+
+        vehicle = validated_data['vehicle']
+        if client.agency is None:
+            client.agency = vehicle.agency
+            client.save(update_fields=['agency'])
+
+        validated_data['client'] = client
+        validated_data['agency'] = vehicle.agency
+        validated_data['prix_par_jour'] = vehicle.prix_par_jour
         return super().create(validated_data)
 
 class ContractDamageSerializer(serializers.ModelSerializer):

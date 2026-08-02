@@ -19,7 +19,7 @@ import qrcode
 import barcode
 from barcode.writer import ImageWriter
 from .models import Contract, ContractDamage, PdfJob, BookingRequest
-from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSerializer
+from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSerializer, ReservationSerializer
 
 
 def generate_pdf(html_string):
@@ -480,6 +480,85 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
         if self.request.user.is_superuser:
             return BookingRequest.objects.all()
         return BookingRequest.objects.filter(agency=self.request.user.agency)
+
+
+class ReservationViewSet(viewsets.ModelViewSet):
+    """
+    Réservations des clients.
+
+    - Un client connecté peut créer sa réservation, consulter les siennes et annuler une réservation en attente.
+    - Le personnel de l'agence voit les réservations de son agence et peut les confirmer (→ contrat RESERVE).
+    """
+    serializer_class = ReservationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.role == 'CLIENT':
+            client = getattr(self.request.user, 'client_profile', None)
+            if not client:
+                return Reservation.objects.none()
+            return Reservation.objects.filter(client=client)
+        if self.request.user.is_superuser:
+            return Reservation.objects.all()
+        return Reservation.objects.filter(agency=self.request.user.agency)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def partial_update(self, request, *args, **kwargs):
+        reservation = self.get_object()
+        # Un client ne peut que annuler sa propre réservation en attente
+        if request.user.role == 'CLIENT':
+            if reservation.client != getattr(request.user, 'client_profile', None):
+                return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            if reservation.statut != 'PENDING' or request.data.get('statut') != 'CANCELLED':
+                return Response({'detail': 'Vous ne pouvez qu\'annuler une réservation en attente.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role == 'CLIENT':
+            return Response({'detail': 'Action non autorisée.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        """Confirme la réservation et crée un contrat en statut RESERVE."""
+        if request.user.role == 'CLIENT':
+            return Response({'detail': 'Action réservée au personnel.'}, status=status.HTTP_403_FORBIDDEN)
+
+        reservation = self.get_object()
+        if reservation.statut != 'PENDING':
+            return Response({'detail': 'Seule une réservation en attente peut être confirmée.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from contracts.models import Contract
+        import math
+        diff = reservation.date_retour_prevue - reservation.date_sortie
+        jours = max(1, math.ceil(diff.total_seconds() / (24 * 3600)))
+
+        contract = Contract.objects.create(
+            agency=reservation.agency,
+            created_by=request.user if request.user.is_authenticated else None,
+            vehicle=reservation.vehicle,
+            client=reservation.client,
+            date_sortie=reservation.date_sortie,
+            date_retour_prevue=reservation.date_retour_prevue,
+            jours=jours,
+            prix_par_jour=reservation.prix_par_jour,
+            caution=reservation.agency.caution_montant,
+            km_sortie=int(request.data.get('km_sortie', 0) or 0),
+            carburant_sortie=request.data.get('carburant_sortie', '4/8'),
+            statut='RESERVE',
+        )
+
+        reservation.statut = 'CONFIRMED'
+        reservation.save(update_fields=['statut'])
+
+        return Response({
+            'detail': 'Réservation confirmée, contrat créé.',
+            'contract_id': contract.id,
+        }, status=status.HTTP_201_CREATED)
 
 
 class PdfJobViewSet(viewsets.ModelViewSet):

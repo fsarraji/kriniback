@@ -1,8 +1,8 @@
 from django.db import models
-from agency.models import Agency # استدعاء نموذج الوكالة
+from agency.models import Agency, CustomUser # استدعاء نموذج الوكالة
 
 class Client(models.Model):
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='clients')
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='clients', null=True, blank=True, verbose_name="الوكالة")
     cin_passport = models.CharField(max_length=20, verbose_name="رقم البطاقة الوطنية أو الجواز")
     date_expiration_cin = models.DateField(null=True, blank=True, verbose_name="تاريخ انتهاء صلاحية الوثيقة")
     nationalite = models.CharField(max_length=50, blank=True, null=True, verbose_name="الجنسية")
@@ -21,6 +21,9 @@ class Client(models.Model):
     # مستندات مرفقة (Scans/Images)
     scan_cin = models.ImageField(upload_to='clients_documents/cin/', null=True, blank=True, verbose_name="صورة البطاقة الوطنية/الجواز")
     scan_permis = models.ImageField(upload_to='clients_documents/permis/', null=True, blank=True, verbose_name="صورة رخصة السياقة")
+
+    # حساب client (pour l'inscription et la connexion en ligne)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='client_profile', verbose_name="Compte utilisateur")
     class Meta:
         # لضمان عدم تكرار رقم البطاقة الوطنية داخل *نفس الوكالة* فقط
         unique_together = ['agency', 'cin_passport']
