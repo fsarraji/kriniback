@@ -212,6 +212,12 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     AWS_S3_URL_PROTOCOL = 'https:'
     AWS_S3_ADDRESSING_STYLE = 'path'
     AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+    # Public URL for images (readable bucket) — e.g. <ref>.supabase.co/storage/v1/object/public/<bucket>
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN') or (
+        f"{AWS_S3_ENDPOINT_URL.replace('https://', '').replace('/storage/v1/s3', '')}"
+        f"/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
+    )
 else:
     # Fallback to local storage
     MEDIA_URL = '/media/'
