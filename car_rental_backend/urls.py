@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -45,3 +47,7 @@ urlpatterns =[
     # مسار إعدادات الوكالة (Agency Settings)
     path('api/agency/settings/', AgencySettingsView.as_view(), name='agency_settings'),
 ]
+
+# Servir les images (MEDIA) en mode développement / lorsque le stockage local est utilisé
+if settings.DEBUG and hasattr(settings, 'MEDIA_URL'):
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
