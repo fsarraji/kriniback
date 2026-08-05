@@ -65,6 +65,7 @@ class BrandViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Brand.objects.all().order_by('name')
     serializer_class = BrandSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # catalogue complet, sans pagination
 
     def get_queryset(self):
         # ?all=1 -> retourne toutes les marques (utilisé pour la configuration des paramètres agence)
@@ -80,6 +81,7 @@ class ModelCarViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ModelCar.objects.all().order_by('name')
     serializer_class = ModelCarSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # catalogue complet, sans pagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['brand']
 
