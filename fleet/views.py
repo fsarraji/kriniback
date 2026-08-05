@@ -66,6 +66,16 @@ class BrandViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = BrandSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        # ?all=1 -> retourne toutes les marques (utilisé pour la configuration des paramètres agence)
+        if self.request.query_params.get('all') == '1' or self.request.user.is_superuser:
+            return Brand.objects.all().order_by('name')
+        agency = self.request.user.agency
+        if agency and agency.brands.exists():
+            return agency.brands.all().order_by('name')
+        # Aucune marque configurée => on affiche toutes les marques
+        return Brand.objects.all().order_by('name')
+
 class ModelCarViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ModelCar.objects.all().order_by('name')
     serializer_class = ModelCarSerializer

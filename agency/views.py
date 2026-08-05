@@ -8,7 +8,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Sum
 
-from fleet.models import Vehicle
+from fleet.models import Vehicle, Brand
 from contracts.models import Contract
 from clients.models import Client
 from .models import Agency, CustomUser
@@ -150,6 +150,7 @@ class AgencySettingsView(APIView):
             "km_par_jour": agency.km_par_jour,
             "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
             "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
+            "brands": list(agency.brands.values_list('id', flat=True)),
         })
 
     def put(self, request):
@@ -189,7 +190,21 @@ class AgencySettingsView(APIView):
         if 'cachet_signature' in request.FILES:
             agency.cachet_signature = request.FILES['cachet_signature']
 
+        if 'brands' in request.data:
+            # Supporte à la fois list JSON (axios) et QueryDict multi-valeurs (FormData)
+            raw = request.data.getlist('brands') if hasattr(request.data, 'getlist') else request.data.get('brands')
+            if isinstance(raw, str):
+                raw = [raw]
+            brand_ids = []
+            for b in raw:
+                try:
+                    brand_ids.append(int(b))
+                except (ValueError, TypeError):
+                    continue
+            agency.brands.set(Brand.objects.filter(id__in=brand_ids))
+
         agency.save()
+        agency.refresh_from_db(fields=['brands'])
         
         return Response({
             "message": "Settings updated",
@@ -199,4 +214,5 @@ class AgencySettingsView(APIView):
             "km_par_jour": agency.km_par_jour,
             "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
             "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
+            "brands": list(agency.brands.values_list('id', flat=True)),
         })

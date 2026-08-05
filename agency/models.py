@@ -22,6 +22,9 @@ class Agency(models.Model):
     km_par_jour = models.IntegerField(default=250, verbose_name="Km inclus par jour")
     km_tarif_extra_defaut = models.DecimalField(max_digits=6, decimal_places=2, default=1.50, verbose_name="Tarif DH par km supplémentaire (défaut)")
 
+    # Marques affichées dans les formulaires (vide = toutes les marques)
+    brands = models.ManyToManyField('fleet.Brand', related_name='agencies', blank=True, verbose_name="Marques affichées")
+
     def __str__(self):
         return self.nom_agence
 
