@@ -50,7 +50,7 @@ class AgencyViewSet(viewsets.ModelViewSet):
     serializer_class = AgencySerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['nom_agence', 'adresse', 'ville', 'pays', 'telephone', 'email', 'rc', 'ice']
+    search_fields = ['nom_agence', 'adresse', 'ville', 'telephone', 'email', 'rc', 'ice']
     ordering_fields = ['nom_agence', 'id']
 
 class PublicAgencySerializer(serializers.ModelSerializer):
