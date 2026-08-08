@@ -167,6 +167,7 @@ class AgencySettingsView(APIView):
             "ville": agency.ville,
             "telephone": agency.telephone,
             "email": agency.email,
+            "logo": request.build_absolute_uri(agency.logo.url) if agency.logo else None,
             "caution_active": agency.caution_active,
             "caution_montant": str(agency.caution_montant),
             "km_extra_active": agency.km_extra_active,
@@ -225,6 +226,9 @@ class AgencySettingsView(APIView):
         if 'cachet_signature' in request.FILES:
             agency.cachet_signature = request.FILES['cachet_signature']
 
+        if 'logo' in request.FILES:
+            agency.logo = request.FILES['logo']
+
         if 'brands' in request.data:
             # Supporte à la fois list JSON (axios) et QueryDict multi-valeurs (FormData)
             raw = request.data.getlist('brands') if hasattr(request.data, 'getlist') else request.data.get('brands')
@@ -248,6 +252,7 @@ class AgencySettingsView(APIView):
             "ville": agency.ville,
             "telephone": agency.telephone,
             "email": agency.email,
+            "logo": request.build_absolute_uri(agency.logo.url) if agency.logo else None,
             "caution_active": agency.caution_active,
             "caution_montant": str(agency.caution_montant),
             "km_extra_active": agency.km_extra_active,
