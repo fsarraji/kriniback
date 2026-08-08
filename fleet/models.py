@@ -54,4 +54,21 @@ class Vehicle(models.Model):
     tarif_km_extra = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Tarif km supplémentaire (DH/km)")
 
     def __str__(self):
-        return f"{self.marque} {self.modele} - {self.matricule}"
+        return f"{self.marque} {self.modele} - {self.matricule}"
+
+
+class Evaluation(models.Model):
+    """Évaluation (note + commentaire) d'un véhicule par un client connecté."""
+
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='evaluations')
+    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='evaluations')
+    rating = models.PositiveSmallIntegerField(verbose_name="Note (1 à 5)")
+    comment = models.TextField(blank=True, null=True, verbose_name="Commentaire")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('vehicle', 'client')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.client} - {self.vehicle} ({self.rating}/5)"

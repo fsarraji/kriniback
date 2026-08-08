@@ -492,6 +492,84 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
             return BookingRequest.objects.all()
         return BookingRequest.objects.filter(agency=self.request.user.agency)
 
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        """
+        Confirme une demande de réservation (BookingRequest) :
+        1. Crée automatiquement le client s'il n'existe pas encore dans l'agence.
+        2. Crée un contrat en statut RESERVE.
+        3. Marque la demande comme CONFIRMED.
+        """
+        booking = self.get_object()
+
+        if booking.statut != 'PENDING':
+            return Response(
+                {'detail': 'Seule une demande en attente peut être confirmée.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not booking.vehicle:
+            return Response(
+                {'detail': 'Aucun véhicule associé à cette demande.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        agency = booking.agency
+        from clients.models import Client
+        import math
+
+        # 1. Chercher un client existant dans l'agence par téléphone
+        client = Client.objects.filter(agency=agency, telephone=booking.telephone).first()
+
+        # 2. Si introuvable, créer automatiquement la fiche client
+        if not client:
+            # Générer un cin_passport temporaire unique si non fourni
+            temp_cin = f"TEMP-{booking.telephone.replace(' ', '')}"
+            client = Client.objects.create(
+                agency=agency,
+                nom=booking.nom,
+                prenom=booking.prenom,
+                telephone=booking.telephone,
+                email=booking.email or '',
+                cin_passport=temp_cin,
+                permis_conduite=temp_cin,  # temporaire, à compléter par l'agence
+                adresse='',
+                remarques=f"Créé automatiquement depuis la demande de réservation #{booking.id}",
+            )
+
+        # 3. Calcul de la durée
+        diff = booking.date_retour_prevue - booking.date_sortie
+        jours = max(1, math.ceil(diff.total_seconds() / (24 * 3600)))
+
+        # 4. Créer le contrat en statut RESERVE
+        from contracts.models import Contract
+        contract = Contract.objects.create(
+            agency=agency,
+            created_by=request.user,
+            vehicle=booking.vehicle,
+            client=client,
+            date_sortie=booking.date_sortie,
+            date_retour_prevue=booking.date_retour_prevue,
+            jours=jours,
+            prix_par_jour=booking.vehicle.prix_par_jour,
+            caution=agency.caution_montant if agency.caution_active else 0,
+            km_sortie=booking.vehicle.kilometrage or 0,
+            carburant_sortie='4/8',
+            statut='RESERVE',
+            notes=booking.message or '',
+        )
+
+        # 5. Marquer la demande comme CONFIRMÉE
+        booking.statut = 'CONFIRMED'
+        booking.save(update_fields=['statut'])
+
+        return Response({
+            'detail': 'Demande confirmée. Client et contrat créés avec succès.',
+            'contract_id': contract.id,
+            'client_id': client.id,
+            'client_created': client.remarques and 'automatiquement' in client.remarques,
+        }, status=status.HTTP_201_CREATED)
+
 
 class ReservationViewSet(viewsets.ModelViewSet):
     """

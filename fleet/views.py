@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import datetime
 
-from .models import Vehicle, Brand, ModelCar
-from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer
+from .models import Vehicle, Brand, ModelCar, Evaluation
+from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer, EvaluationSerializer
 from contracts.models import Contract
 
 class VehicleViewSet(viewsets.ModelViewSet):
@@ -84,6 +84,44 @@ class ModelCarViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None  # catalogue complet, sans pagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['brand']
+
+class EvaluationViewSet(viewsets.ModelViewSet):
+    """
+    Évaluations des véhicules par les clients connectés.
+    - Lecture (GET) publique : chacun peut voir les avis.
+    - Création (POST) : réservée aux clients connectés, une seule évaluation par client et véhicule.
+    """
+    queryset = Evaluation.objects.select_related('client', 'vehicle__marque', 'vehicle__modele')
+    serializer_class = EvaluationSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['vehicle']
+    ordering_fields = ['created_at', 'rating']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        vehicle = self.request.query_params.get('vehicle')
+        if vehicle:
+            qs = qs.filter(vehicle=vehicle)
+        return qs
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def partial_update(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if getattr(request.user, 'client_profile', None) != obj.client:
+            return Response({'detail': 'Vous ne pouvez modifier que votre propre évaluation.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if getattr(request.user, 'client_profile', None) != obj.client:
+            return Response({'detail': 'Vous ne pouvez supprimer que votre propre évaluation.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
 class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     """

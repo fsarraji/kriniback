@@ -5,8 +5,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView # استدعاء لوحة القيادة
-from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet
+from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView, PublicAgencyViewSet # استدعاء لوحة القيادة
+from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet, EvaluationViewSet
 from clients.views import ClientViewSet, ClientRegisterView, ClientAccountView
 from contracts.views import ContractViewSet, PdfJobViewSet, BookingRequestViewSet, ReservationViewSet
 from payments.views import PaymentViewSet
@@ -14,6 +14,7 @@ from expenses.views import ExpenseViewSet
 
 router = DefaultRouter()
 router.register(r'agencies', AgencyViewSet, basename='agency')
+router.register(r'public-agencies', PublicAgencyViewSet, basename='public-agency')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'vehicles', VehicleViewSet, basename='vehicle')
 router.register(r'brands', BrandViewSet, basename='brand')
@@ -26,6 +27,7 @@ router.register(r'reservations', ReservationViewSet, basename='reservation')
 router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'expenses', ExpenseViewSet, basename='expense')
 router.register(r'public-vehicles', PublicVehicleViewSet, basename='public-vehicle')
+router.register(r'evaluations', EvaluationViewSet, basename='evaluation')
 
 urlpatterns =[
     path('admin/', admin.site.urls),

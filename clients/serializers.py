@@ -27,36 +27,42 @@ class ClientRegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False, allow_blank=True)
     date_expiration_cin = serializers.DateField(required=False, allow_null=True)
     nationalite = serializers.CharField(required=False, allow_blank=True)
+    sexe = serializers.ChoiceField(choices=[('HOMME', 'Homme'), ('FEMME', 'Femme')], required=False, allow_blank=True)
     date_delivrance_permis = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = Client
         fields = [
             'nom', 'prenom', 'telephone', 'email',
-            'cin_passport', 'date_expiration_cin', 'nationalite',
+            'cin_passport', 'date_expiration_cin', 'nationalite', 'sexe',
             'permis_conduite', 'date_delivrance_permis', 'adresse',
+            'ville', 'pays',
             'scan_cin', 'scan_permis', 'password',
         ]
         extra_kwargs = {
-            'cin_passport': {'required': True},
-            'permis_conduite': {'required': True},
-            'adresse': {'required': True},
+            'cin_passport': {'required': False, 'allow_blank': True},
+            'permis_conduite': {'required': False, 'allow_blank': True},
+            'adresse': {'required': False, 'allow_blank': True},
         }
 
     def validate(self, data):
-        if Client.objects.filter(cin_passport=data.get('cin_passport')).exists():
+        cin = (data.get('cin_passport') or '').strip()
+        permis = (data.get('permis_conduite') or '').strip()
+        if cin and Client.objects.filter(cin_passport=cin).exists():
             raise serializers.ValidationError({'cin_passport': 'Un client avec ce CIN/passeport existe déjà.'})
-        if Client.objects.filter(permis_conduite=data.get('permis_conduite')).exists():
+        if permis and Client.objects.filter(permis_conduite=permis).exists():
             raise serializers.ValidationError({'permis_conduite': 'Un client avec ce permis existe déjà.'})
 
-        email = data.get('email')
-        telephone = data.get('telephone')
-        username = (email or telephone or '').strip()
+        email = (data.get('email') or '').strip()
+        telephone = (data.get('telephone') or '').strip()
+        username = email or telephone
         if not username:
             raise serializers.ValidationError({'email': 'Un email ou un téléphone est requis.'})
         if CustomUser.objects.filter(username=username).exists():
             raise serializers.ValidationError({'email': 'Un compte existe déjà avec ces identifiants.'})
         data['username'] = username
+        if not email:
+            data['email'] = None
         return data
 
     def create(self, validated_data):
@@ -75,4 +81,4 @@ class ClientAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Client
-        fields = ['id', 'username', 'nom', 'prenom', 'telephone', 'email', 'cin_passport', 'adresse']
+        fields = ['id', 'username', 'nom', 'prenom', 'telephone', 'email', 'cin_passport', 'nationalite', 'sexe', 'adresse', 'ville', 'pays']

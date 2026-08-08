@@ -5,6 +5,8 @@ from django.contrib.auth.models import AbstractUser
 class Agency(models.Model):
     nom_agence = models.CharField(max_length=100, verbose_name="Nom de l'agence")
     adresse = models.TextField(verbose_name="Adresse")
+    ville = models.CharField(max_length=100, blank=True, null=True, verbose_name="Ville")
+    pays = models.CharField(max_length=100, blank=True, null=True, verbose_name="Pays")
     telephone = models.CharField(max_length=20, verbose_name="Téléphone")
     rc = models.CharField(max_length=50, blank=True, null=True, verbose_name="Registre du Commerce (RC)")
     ice = models.CharField(max_length=50, blank=True, null=True, verbose_name="Identifiant Commun de l'Entreprise (ICE)")

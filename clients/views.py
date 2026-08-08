@@ -46,11 +46,16 @@ class ClientRegisterView(APIView):
         serializer = ClientRegisterSerializer(data=request.data)
         if serializer.is_valid():
             client = serializer.save()
+            # Retourne les tokens JWT pour connecter immédiatement le client
+            from agency.serializers import CustomTokenObtainPairSerializer
+            refresh = CustomTokenObtainPairSerializer.get_token(client.user)
             return Response({
                 'id': client.id,
                 'nom': client.nom,
                 'prenom': client.prenom,
                 'detail': 'Compte client créé avec succès.',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -59,8 +64,27 @@ class ClientAccountView(APIView):
     """Profil du client connecté."""
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def get_client(self, request):
         client = getattr(request.user, 'client_profile', None)
+        if not client:
+            return None
+        return client
+
+    def get(self, request):
+        client = self.get_client(request)
         if not client:
             return Response({'detail': 'Aucun profil client lié à ce compte.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ClientAccountSerializer(client).data)
+
+    def patch(self, request):
+        client = self.get_client(request)
+        if not client:
+            return Response({'detail': 'Aucun profil client lié à ce compte.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ClientAccountSerializer(client, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        return self.patch(request)

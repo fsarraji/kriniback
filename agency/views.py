@@ -50,8 +50,26 @@ class AgencyViewSet(viewsets.ModelViewSet):
     serializer_class = AgencySerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['nom_agence', 'adresse', 'telephone', 'email', 'rc', 'ice']
+    search_fields = ['nom_agence', 'adresse', 'ville', 'pays', 'telephone', 'email', 'rc', 'ice']
     ordering_fields = ['nom_agence', 'id']
+
+class PublicAgencySerializer(serializers.ModelSerializer):
+    vehicles_count = serializers.IntegerField(source='vehicles.count', read_only=True)
+
+    class Meta:
+        model = Agency
+        fields = ['id', 'nom_agence', 'adresse', 'ville', 'pays', 'telephone', 'email', 'logo',
+                  'caution_active', 'caution_montant', 'km_extra_active', 'km_par_jour',
+                  'km_tarif_extra_defaut', 'vehicles_count']
+
+class PublicAgencyViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Vue publique (sans authentification) des agences pour le site de réservation.
+    """
+    queryset = Agency.objects.filter(is_active=True, vehicles__statut='Available').distinct()
+    serializer_class = PublicAgencySerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = None
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()

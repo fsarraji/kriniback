@@ -2,17 +2,25 @@ from django.db import models
 from agency.models import Agency, CustomUser # استدعاء نموذج الوكالة
 
 class Client(models.Model):
+    SEXE_CHOICES = (
+        ('HOMME', 'Homme'),
+        ('FEMME', 'Femme'),
+    )
+
     agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='clients', null=True, blank=True, verbose_name="الوكالة")
-    cin_passport = models.CharField(max_length=20, verbose_name="رقم البطاقة الوطنية أو الجواز")
+    cin_passport = models.CharField(max_length=20, null=True, blank=True, verbose_name="رقم البطاقة الوطنية أو الجواز")
     date_expiration_cin = models.DateField(null=True, blank=True, verbose_name="تاريخ انتهاء صلاحية الوثيقة")
     nationalite = models.CharField(max_length=50, blank=True, null=True, verbose_name="الجنسية")
+    sexe = models.CharField(max_length=10, choices=SEXE_CHOICES, blank=True, null=True, verbose_name="Sexe")
     nom = models.CharField(max_length=50, verbose_name="الاسم العائلي")
     prenom = models.CharField(max_length=50, verbose_name="الاسم الشخصي")
     telephone = models.CharField(max_length=20, verbose_name="رقم الهاتف")
     email = models.EmailField(blank=True, null=True, verbose_name="البريد الإلكتروني")
-    permis_conduite = models.CharField(max_length=50, unique=True, verbose_name="رقم رخصة السياقة")
+    permis_conduite = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="رقم رخصة السياقة")
     date_delivrance_permis = models.DateField(verbose_name="تاريخ تسليم رخصة السياقة", null=True, blank=True)
-    adresse = models.TextField(verbose_name="العنوان")
+    adresse = models.TextField(null=True, blank=True, verbose_name="العنوان")
+    ville = models.CharField(max_length=100, blank=True, null=True, verbose_name="Ville")
+    pays = models.CharField(max_length=100, blank=True, null=True, verbose_name="Pays")
     
     # إضافات حديثة
     liste_noire = models.BooleanField(default=False, verbose_name="في القائمة السوداء؟")
