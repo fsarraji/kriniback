@@ -1,5 +1,21 @@
+import os
+import re
+
 from django.db import models
 from agency.models import Agency
+
+
+def _safe(value, fallback='x'):
+    s = re.sub(r'[^A-Za-z0-9]+', '-', str(value or ''))
+    return s.strip('-') or fallback
+
+
+def vehicle_image_upload_to(instance, filename):
+    marque = _safe(instance.marque.name) if instance.marque_id else 'x'
+    modele = _safe(instance.modele.name) if instance.modele_id else 'x'
+    matricule = _safe(instance.matricule)
+    ext = os.path.splitext(filename)[1].lower()
+    return f'vehicles_images/{marque}-{modele}-{matricule}{ext}'
 
 
 class Brand(models.Model):
@@ -50,7 +66,7 @@ class Vehicle(models.Model):
     date_visite_technique = models.DateField(verbose_name="Date visite technique")
     prochain_vidange_km = models.IntegerField(verbose_name="Prochain vidange (km)")
     
-    image = models.ImageField(upload_to='vehicles_images/', null=True, blank=True)
+    image = models.ImageField(upload_to=vehicle_image_upload_to, null=True, blank=True)
     tarif_km_extra = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Tarif km supplémentaire (DH/km)")
 
     def __str__(self):

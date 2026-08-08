@@ -1,6 +1,26 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+import os
+import re
+
+
+def _safe(value, fallback='agence'):
+    s = re.sub(r'[^A-Za-z0-9]+', '-', str(value or ''))
+    return s.strip('-') or fallback
+
+
+def agency_logo_upload_to(instance, filename):
+    name = _safe(instance.nom_agence)
+    ext = os.path.splitext(filename)[1].lower()
+    return f'agency_logos/{name}{ext}'
+
+
+def agency_cachet_upload_to(instance, filename):
+    name = _safe(instance.nom_agence)
+    ext = os.path.splitext(filename)[1].lower()
+    return f'agency_cachets/{name}{ext}'
+
 # 1. Modèle de l'agence (Société)
 class Agency(models.Model):
     nom_agence = models.CharField(max_length=100, verbose_name="Nom de l'agence")
@@ -10,8 +30,8 @@ class Agency(models.Model):
     rc = models.CharField(max_length=50, blank=True, null=True, verbose_name="Registre du Commerce (RC)")
     ice = models.CharField(max_length=50, blank=True, null=True, verbose_name="Identifiant Commun de l'Entreprise (ICE)")
     email = models.EmailField(blank=True, null=True)
-    logo = models.ImageField(upload_to='agency_logos/', null=True, blank=True)
-    cachet_signature = models.ImageField(upload_to='agency_cachets/', null=True, blank=True, verbose_name="Cachet et Signature")
+    logo = models.ImageField(upload_to=agency_logo_upload_to, null=True, blank=True)
+    cachet_signature = models.ImageField(upload_to=agency_cachet_upload_to, null=True, blank=True, verbose_name="Cachet et Signature")
     date_creation = models.DateTimeField(auto_now_add=True)
     
     is_active = models.BooleanField(default=True, verbose_name="Compte actif")
