@@ -210,7 +210,12 @@ AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1') # حدد ا
 # إذا تم توفير إعدادات S3، نستخدم django-storages
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     # Use django-storages with S3 backend
+    # Django >= 5.1 : STORAGES['default'] est la config canonique (DEFAULT_FILE_STORAGE est legacy/ignoré)
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STORAGES = {
+        'default': {'BACKEND': DEFAULT_FILE_STORAGE},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    }
     
     # Supabase S3 Specifics
     AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')

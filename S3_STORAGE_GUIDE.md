@@ -18,12 +18,14 @@ L'activation du S3 est déjà prévue dans le code (`car_rental_backend/settings
 
 ### 2. Récupérer les clés S3 (compatibles)
 
-1. Console Supabase → **Project Settings** → **API** (ou **Storage**).
-2. Onglet **S3 Access Keys** → **Create new key**.
-   - `Access Key ID`
-   - `Secret Access Key`
-3. Endpoint : `https://<PROJECT_REF>.supabase.co/storage/v1/s3`
+1. Console Supabase → **Storage → Settings → S3 Access Keys**.
+2. **New access key** (éventuellement limité au bucket) → copier :
+   - `Access Key ID` (ex. préfixe `sb_access_...`)
+   - `Secret Access Key` (ex. préfixe `sb_secret_...`) — **affiché une seule fois**
+3. ⚠️ L'`Access Key ID` et le `Secret` sont générés **par paire** : une paire non correspondante produit `SignatureDoesNotMatch` (HTTP 403) à l'écriture.
+4. Endpoint : `https://<PROJECT_REF>.supabase.co/storage/v1/s3`
    - Exemple avec le ref visible dans l'URL du projet : `https://gojkevxwwoimalftpuzg.supabase.co/storage/v1/s3`
+   - Région : celle du projet (ex. `eu-central-1`)
 
 ### 3. Configurer les variables d'environnement sur Render
 
@@ -59,5 +61,15 @@ Les anciennes images sont perdues (disque éphémère). Il faut ré-uploader les
 ## Commentaires de code pertinents
 
 - Bascule S3 : `car_rental_backend/settings.py` (bloc `if AWS_ACCESS_KEY_ID and ...`)
+  - ⚠️ **Django ≥ 5.1** : `DEFAULT_FILE_STORAGE` seul est **ignoré**. Il faut définir
+    `STORAGES['default']['BACKEND'] = 'storages.backends.s3boto3.S3Boto3Storage'` (fait dans ce repo).
 - Diagnostic : `fleet/management/commands/check_storage.py`
 - URL des images côté frontend : `src/apiUrl.js` (`resolveMediaUrl`)
+
+## Dépannage
+
+- `=> Stockage actif : DISQUE LOCAL` alors que les variables S3 sont définies → vérifier que
+  le code déployé contient bien le bloc `STORAGES` (Django ≥ 5.1), puis **redéployer** Render
+  (Manual Deploy → Deploy latest commit) : modifier les variables d'env ne redémarre pas le service.
+- `SignatureDoesNotMatch` / `403 Forbidden` au test d'écriture → l'`Access Key ID` et le
+  `Secret Access Key` ne correspondent pas : régénérer la paire dans **Storage → Settings → S3 Access Keys**.
