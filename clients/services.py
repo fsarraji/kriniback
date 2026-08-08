@@ -1,11 +1,14 @@
 import os
 import threading
 import traceback
+import logging
 
 from django.conf import settings
 from django.core.mail import EmailMessage
 
 from .models import Client
+
+logger = logging.getLogger(__name__)
 
 
 def _attachment_from_field(label, field):
@@ -86,13 +89,26 @@ def _build_documents_email(client, agency, reservation=None):
     return email
 
 
+def _send_in_background(email):
+    try:
+        email.send(fail_silently=False)
+        logger.info('Email documents client envoyé à %s', email.to)
+    except Exception:
+        logger.exception('Échec de l\'envoi de l\'email documents client à %s (host=%s user=%s)',
+                         email.to, settings.EMAIL_HOST, settings.EMAIL_HOST_USER)
+        traceback.print_exc()
+
+
 def send_client_documents_to_agency(client, agency, reservation=None):
     """Envoie par email les scans du client à l'agence (en arrière-plan)."""
     try:
         email = _build_documents_email(client, agency, reservation)
         if email is None:
+            logger.warning('Email documents non envoyé pour client %s : agence %s email=%s, pièces jointes manquantes',
+                           client.id, getattr(agency, 'nom_agence', '—'),
+                           getattr(agency, 'email', None) if agency else None)
             return
-        thread = threading.Thread(target=lambda: email.send(fail_silently=True), daemon=True)
+        thread = threading.Thread(target=_send_in_background, args=(email,), daemon=True)
         thread.start()
     except Exception:
         traceback.print_exc()

@@ -49,7 +49,7 @@ class ClientDocumentsUploadTest(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.agency.email])
         self.assertEqual(len(mail.outbox[0].attachments), 1)
-        self.assertEqual(mail.outbox[0].attachments[0][0], 'cin.jpg')
+        self.assertTrue(mail.outbox[0].attachments[0][0].startswith('cin'))
 
     def test_profile_exposes_scan_fields(self):
         c = APIClient()

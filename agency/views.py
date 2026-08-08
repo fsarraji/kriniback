@@ -58,7 +58,7 @@ class PublicAgencySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Agency
-        fields = ['id', 'nom_agence', 'adresse', 'ville', 'pays', 'telephone', 'email', 'logo',
+        fields = ['id', 'nom_agence', 'adresse', 'ville', 'telephone', 'email', 'logo',
                   'caution_active', 'caution_montant', 'km_extra_active', 'km_par_jour',
                   'km_tarif_extra_defaut', 'vehicles_count']
 
