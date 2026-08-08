@@ -162,6 +162,11 @@ class AgencySettingsView(APIView):
             return Response({"error": "No agency attached"}, status=400)
         agency = request.user.agency
         return Response({
+            "nom_agence": agency.nom_agence,
+            "adresse": agency.adresse,
+            "ville": agency.ville,
+            "telephone": agency.telephone,
+            "email": agency.email,
             "caution_active": agency.caution_active,
             "caution_montant": str(agency.caution_montant),
             "km_extra_active": agency.km_extra_active,
@@ -181,6 +186,18 @@ class AgencySettingsView(APIView):
             
         agency = request.user.agency
         
+        if 'email' in request.data:
+            agency.email = (str(request.data['email']).strip() or None)
+
+        if 'telephone' in request.data:
+            agency.telephone = str(request.data['telephone']).strip()
+
+        if 'adresse' in request.data:
+            agency.adresse = str(request.data['adresse']).strip()
+
+        if 'ville' in request.data:
+            agency.ville = str(request.data['ville']).strip()
+
         if 'caution_active' in request.data:
             agency.caution_active = str(request.data['caution_active']).lower() in ['true', '1', 't', 'y', 'yes']
             
@@ -226,6 +243,11 @@ class AgencySettingsView(APIView):
         
         return Response({
             "message": "Settings updated",
+            "nom_agence": agency.nom_agence,
+            "adresse": agency.adresse,
+            "ville": agency.ville,
+            "telephone": agency.telephone,
+            "email": agency.email,
             "caution_active": agency.caution_active,
             "caution_montant": str(agency.caution_montant),
             "km_extra_active": agency.km_extra_active,
@@ -234,3 +256,55 @@ class AgencySettingsView(APIView):
             "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
             "brands": list(agency.brands.values_list('id', flat=True)),
         })
+
+
+def user_payload(user):
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "role": 'SUPERADMIN' if user.is_superuser else user.role,
+        "agency_id": user.agency.id if user.agency else None,
+        "agency_name": user.agency.nom_agence if user.agency else None,
+    }
+
+
+class AccountMeView(APIView):
+    """Compte de l'utilisateur connecté (staff / owner / superadmin)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(user_payload(request.user))
+
+    def put(self, request):
+        user = request.user
+        data = request.data
+
+        if 'username' in data:
+            username = str(data['username']).strip()
+            if not username:
+                return Response({"username": "Le nom d'utilisateur est requis."}, status=400)
+            if CustomUser.objects.exclude(pk=user.pk).filter(username=username).exists():
+                return Response({"username": "Ce nom d'utilisateur est déjà pris."}, status=400)
+            user.username = username
+
+        if 'first_name' in data:
+            user.first_name = str(data['first_name'])[:150]
+        if 'last_name' in data:
+            user.last_name = str(data['last_name'])[:150]
+        if 'email' in data:
+            user.email = str(data['email']).strip() or None
+
+        new_password = data.get('new_password')
+        if new_password:
+            current_password = data.get('current_password', '')
+            if not current_password or not user.check_password(str(current_password)):
+                return Response({"current_password": "Le mot de passe actuel est incorrect."}, status=400)
+            if len(str(new_password)) < 6:
+                return Response({"new_password": "Le mot de passe doit contenir au moins 6 caractères."}, status=400)
+            user.set_password(str(new_password))
+
+        user.save()
+        return Response(user_payload(user))

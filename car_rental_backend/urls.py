@@ -5,7 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView, PublicAgencyViewSet # استدعاء لوحة القيادة
+from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView, AccountMeView, PublicAgencyViewSet # استدعاء لوحة القيادة
 from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet, EvaluationViewSet
 from clients.views import ClientViewSet, ClientRegisterView, ClientAccountView
 from contracts.views import ContractViewSet, PdfJobViewSet, BookingRequestViewSet, ReservationViewSet
@@ -35,7 +35,10 @@ urlpatterns =[
     # مسارات حساب العميل (Inscription + Profil) — avant le router pour éviter le conflit avec clients/{pk}/
     path('api/clients/register/', ClientRegisterView.as_view(), name='client_register'),
     path('api/clients/me/', ClientAccountView.as_view(), name='client_me'),
-    
+
+    # مسار الحساب الشخصي للمستخدم المتصل — قبل الـ router لتجنب التعارض مع users/{pk}/
+    path('api/users/me/', AccountMeView.as_view(), name='account_me'),
+
     # مسارات الـ API الأساسية
     path('api/', include(router.urls)),
     
