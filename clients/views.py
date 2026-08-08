@@ -83,6 +83,11 @@ class ClientAccountView(APIView):
         serializer = ClientAccountSerializer(client, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            # Si le client a fourni des scans, on les envoie à l'email de son agence
+            if ('scan_cin' in request.FILES or 'scan_permis' in request.FILES) and client.agency and client.agency.email:
+                from clients.services import send_client_documents_to_agency
+                reservation = client.reservations.filter(statut='CONFIRMED').order_by('-created_at').first()
+                send_client_documents_to_agency(client, client.agency, reservation)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
