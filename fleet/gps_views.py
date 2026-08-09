@@ -16,6 +16,7 @@ from .serializers import VehicleSerializer
 from .traccar import (
     TraccarError,
     TraccarNotConfigured,
+    create_device,
     get_device_position,
     get_devices,
     get_route,
@@ -103,7 +104,7 @@ class GpsVehiclePositionView(APIView):
 
 
 class GpsDevicesView(APIView):
-    """Liste les dispositifs Traccar pour permettre le mapping avec les véhicules."""
+    """Dispositifs Traccar : liste (GET) et création (POST) pour le mapping véhicule."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -115,6 +116,29 @@ class GpsDevicesView(APIView):
         except TraccarError as exc:
             return Response({"detail": str(exc)}, status=502)
         return Response({"tracking": True, "devices": devices})
+
+    def post(self, request):
+        unique_id = (request.data.get('uniqueId') or request.data.get('unique_id') or '').strip()
+        if not unique_id:
+            return Response({"detail": "Le champ uniqueId (IMEI du dispositif) est requis."}, status=400)
+        name = (request.data.get('name') or '').strip() or f'Dispositif {unique_id}'
+        agency = request.user.agency
+        try:
+            device = create_device(name, unique_id, agency=agency)
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError:
+            # uniqueId peut déjà exister côté Traccar : on le retrouve et on le renvoie
+            try:
+                device = next(
+                    (d for d in get_devices(agency=agency) if str(d.get('uniqueId', '')).strip() == unique_id),
+                    None,
+                )
+            except (TraccarError, TraccarNotConfigured):
+                device = None
+            if not device:
+                return Response({"detail": "Impossible de créer le dispositif sur le serveur Traccar."}, status=502)
+        return Response(device)
 
 
 class GpsHistoryView(APIView):
