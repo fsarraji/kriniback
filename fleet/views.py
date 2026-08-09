@@ -6,7 +6,42 @@ from datetime import datetime
 
 from .models import Vehicle, Brand, ModelCar, Evaluation
 from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer, EvaluationSerializer
+from .traccar import TraccarError, TraccarNotConfigured, create_device, get_devices, update_device
 from contracts.models import Contract
+
+
+def _sync_traccar_device(vehicle, agency):
+    """Enregistre le périphérique GPS (IMEI) du véhicule sur le serveur Traccar.
+
+    Si le véhicule a un IMEI mais aucun ID Traccar, on crée le dispositif sur
+    le serveur et on stocke l'ID retourné dans traccar_device_id pour les
+    appels API (positions, historique). Si Traccar n'est pas configuré pour
+    l'agence, on ne bloque pas la sauvegarde : l'IMEI est conservé pour une
+    synchronisation ultérieure.
+    """
+    imei = (vehicle.gps_imei or '').strip()
+    if not imei or vehicle.traccar_device_id:
+        return
+
+    name = vehicle.matricule or f'Véhicule {imei}'
+    try:
+        device = create_device(name, imei, agency=agency)
+    except TraccarNotConfigured:
+        return
+    except TraccarError:
+        # Le dispositif existe peut-être déjà (uniqueId dupliqué) : on le retrouve
+        try:
+            device = next((d for d in get_devices(agency=agency) if str(d.get('uniqueId', '')).strip() == imei), None)
+        except (TraccarError, TraccarNotConfigured):
+            device = None
+    if not device:
+        return
+
+    device_id = device.get('id')
+    if device_id:
+        vehicle.traccar_device_id = device_id
+        vehicle.save(update_fields=['traccar_device_id'])
+
 
 class VehicleViewSet(viewsets.ModelViewSet):
     serializer_class = VehicleSerializer
@@ -28,7 +63,26 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if not agency:
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "Votre compte n'est lié à aucune agence. Veuillez contacter l'administrateur."})
-        serializer.save(agency=agency)
+        vehicle = serializer.save(agency=agency)
+        _sync_traccar_device(vehicle, agency)
+
+    def perform_update(self, serializer):
+        old_imei = (serializer.instance.gps_imei or '').strip() if serializer.instance else None
+        vehicle = serializer.save()
+        _sync_traccar_device(vehicle, self.request.user.agency)
+        # Si l'IMEI du véhicule change et qu'un dispositif Traccar est déjà lié,
+        # on met à jour l'uniqueId côté serveur pour rester cohérent.
+        new_imei = (vehicle.gps_imei or '').strip()
+        if vehicle.traccar_device_id and old_imei and new_imei and old_imei != new_imei:
+            try:
+                update_device(
+                    vehicle.traccar_device_id,
+                    name=vehicle.matricule or f'Véhicule {new_imei}',
+                    unique_id=new_imei,
+                    agency=self.request.user.agency,
+                )
+            except (TraccarError, TraccarNotConfigured):
+                pass
 
     @action(detail=False, methods=['get'])
     def available_cars(self, request):

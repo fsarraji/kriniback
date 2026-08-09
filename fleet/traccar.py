@@ -93,6 +93,25 @@ def get_device_position(device_id, agency=None):
     return positions[-1] if positions else None
 
 
+def create_device(name, unique_id, agency=None):
+    """Crée un dispositif sur le serveur Traccar et retourne l'objet créé.
+
+    Retourne un dict {id, name, uniqueId, status, ...}. Le champ uniqueId
+    (IMEI du périphérique GPS) doit être unique côté Traccar.
+    """
+    return _request("POST", "/devices", json={"name": name, "uniqueId": unique_id}, agency=agency)
+
+
+def update_device(device_id, name=None, unique_id=None, agency=None):
+    """Met à jour un dispositif Traccar (name / uniqueId)."""
+    payload = {}
+    if name is not None:
+        payload["name"] = name
+    if unique_id is not None:
+        payload["uniqueId"] = unique_id
+    return _request("PUT", f"/devices/{device_id}", json=payload, agency=agency)
+
+
 def get_route(device_id, from_iso, to_iso, agency=None):
     """Historique de route d'un dispositif entre deux dates ISO. [position, ...]"""
     return _request(
