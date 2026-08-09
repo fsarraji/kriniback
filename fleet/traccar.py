@@ -22,6 +22,10 @@ KNOTS_TO_KPH = 1.852
 class TraccarError(Exception):
     """Erreur de communication avec le serveur Traccar."""
 
+    def __init__(self, message, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
+
 
 class TraccarNotConfigured(Exception):
     """Traccar n'est pas configuré (pas de compte d'agence ni de config globale)."""
@@ -69,8 +73,12 @@ def _request(method, path, params=None, json=None, timeout=10, agency=None):
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
+        status_code = exc.response.status_code if exc.response is not None else None
         logger.warning("Erreur Traccar %s %s: %s", method, url, exc)
-        raise TraccarError(f"Impossible de joindre le serveur Traccar ({url}): {exc}") from exc
+        raise TraccarError(
+            f"Impossible de joindre le serveur Traccar ({url}): {exc}",
+            status_code=status_code,
+        ) from exc
     try:
         return resp.json()
     except ValueError as exc:

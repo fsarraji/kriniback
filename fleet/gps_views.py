@@ -142,6 +142,18 @@ class GpsDevicesView(APIView):
             except TraccarNotConfigured:
                 device = None
             if not device:
+                if exc.status_code == 400:
+                    return Response(
+                        {
+                            "detail": (
+                                f"Le serveur Traccar a refusé la création (erreur 400). "
+                                f"L'ID/IMEI « {unique_id} » est déjà enregistré sur le serveur Traccar, "
+                                f"mais il n'est pas accessible avec le compte de votre agence. "
+                                f"Utilisez un autre IMEI ou vérifiez le compte Traccar."
+                            )
+                        },
+                        status=502,
+                    )
                 return Response(
                     {"detail": f"Impossible de créer le dispositif sur le serveur Traccar ({exc})."},
                     status=502,
