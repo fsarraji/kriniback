@@ -154,28 +154,40 @@ class DashboardStatsView(APIView):
             'recent_contracts': list(recent_contracts)
         })
 
+def _agency_settings_payload(agency, request):
+    traccar_url = (agency.traccar_url or "").strip()
+    traccar_username = (agency.traccar_username or "").strip()
+    traccar_configured = bool(
+        traccar_url and traccar_username and agency.traccar_password
+    )
+    return {
+        "nom_agence": agency.nom_agence,
+        "adresse": agency.adresse,
+        "ville": agency.ville,
+        "telephone": agency.telephone,
+        "email": agency.email,
+        "logo": request.build_absolute_uri(agency.logo.url) if agency.logo else None,
+        "caution_active": agency.caution_active,
+        "caution_montant": str(agency.caution_montant),
+        "km_extra_active": agency.km_extra_active,
+        "km_par_jour": agency.km_par_jour,
+        "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
+        "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
+        "brands": list(agency.brands.values_list('id', flat=True)),
+        "traccar_url": traccar_url,
+        "traccar_username": traccar_username,
+        "traccar_password_set": bool(agency.traccar_password),
+        "traccar_configured": traccar_configured,
+    }
+
+
 class AgencySettingsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         if not request.user.agency:
             return Response({"error": "No agency attached"}, status=400)
-        agency = request.user.agency
-        return Response({
-            "nom_agence": agency.nom_agence,
-            "adresse": agency.adresse,
-            "ville": agency.ville,
-            "telephone": agency.telephone,
-            "email": agency.email,
-            "logo": request.build_absolute_uri(agency.logo.url) if agency.logo else None,
-            "caution_active": agency.caution_active,
-            "caution_montant": str(agency.caution_montant),
-            "km_extra_active": agency.km_extra_active,
-            "km_par_jour": agency.km_par_jour,
-            "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
-            "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
-            "brands": list(agency.brands.values_list('id', flat=True)),
-        })
+        return Response(_agency_settings_payload(request.user.agency, request))
 
     def put(self, request):
         if not request.user.agency:
@@ -242,24 +254,31 @@ class AgencySettingsView(APIView):
                     continue
             agency.brands.set(Brand.objects.filter(id__in=brand_ids))
 
+        # Configuration Traccar (compte par agence)
+        if 'traccar_url' in request.data:
+            agency.traccar_url = (str(request.data['traccar_url']).strip() or None)
+
+        if 'traccar_username' in request.data:
+            agency.traccar_username = (str(request.data['traccar_username']).strip() or None)
+
+        if 'traccar_password' in request.data:
+            value = request.data['traccar_password']
+            if value is None:
+                agency.traccar_password = None
+            else:
+                value = str(value).strip()
+                if value:
+                    agency.traccar_password = value
+
+        if str(request.data.get('traccar_clear_password', '')).lower() in ['true', '1', 'yes', 'on']:
+            agency.traccar_password = None
+
         agency.save()
         agency.refresh_from_db(fields=['brands'])
         
         return Response({
             "message": "Settings updated",
-            "nom_agence": agency.nom_agence,
-            "adresse": agency.adresse,
-            "ville": agency.ville,
-            "telephone": agency.telephone,
-            "email": agency.email,
-            "logo": request.build_absolute_uri(agency.logo.url) if agency.logo else None,
-            "caution_active": agency.caution_active,
-            "caution_montant": str(agency.caution_montant),
-            "km_extra_active": agency.km_extra_active,
-            "km_par_jour": agency.km_par_jour,
-            "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
-            "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
-            "brands": list(agency.brands.values_list('id', flat=True)),
+            **_agency_settings_payload(agency, request),
         })
 
 

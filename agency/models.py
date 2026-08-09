@@ -46,6 +46,11 @@ class Agency(models.Model):
     # Marques affichées dans les formulaires (vide = toutes les marques)
     brands = models.ManyToManyField('fleet.Brand', related_name='agencies', blank=True, verbose_name="Marques affichées")
 
+    # Suivi GPS Traccar : chaque agence dispose de son propre compte serveur
+    traccar_url = models.CharField(max_length=200, blank=True, null=True, verbose_name="URL serveur Traccar")
+    traccar_username = models.CharField(max_length=100, blank=True, null=True, verbose_name="Utilisateur Traccar")
+    traccar_password = models.CharField(max_length=200, blank=True, null=True, verbose_name="Mot de passe Traccar")
+
     def __str__(self):
         return self.nom_agence
 

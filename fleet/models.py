@@ -68,6 +68,12 @@ class Vehicle(models.Model):
     
     image = models.ImageField(upload_to=vehicle_image_upload_to, null=True, blank=True)
     tarif_km_extra = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Tarif km supplémentaire (DH/km)")
+    traccar_device_id = models.BigIntegerField(null=True, blank=True, verbose_name="ID dispositif Traccar")
+
+    # Dispositif GPS installé dans le véhicule
+    gps_imei = models.CharField(max_length=50, null=True, blank=True, verbose_name="ID / IMEI du dispositif GPS")
+    sim_number = models.CharField(max_length=30, null=True, blank=True, verbose_name="Numéro carte SIM")
+    sim_operator = models.CharField(max_length=50, null=True, blank=True, verbose_name="Opérateur télécom")
 
     def __str__(self):
         return f"{self.marque} {self.modele} - {self.matricule}"

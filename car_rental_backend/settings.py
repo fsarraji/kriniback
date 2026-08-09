@@ -177,6 +177,12 @@ REST_FRAMEWORK = {
 
 PDF_SERVICE_URL = os.getenv('PDF_SERVICE_URL', 'http://localhost:8001')
 
+# Configuration du serveur Traccar (suivi GPS des véhicules)
+# Exemple : TRACCAR_URL=http://localhost:8082, TRACCAR_USER=admin, TRACCAR_PASSWORD=admin
+TRACCAR_URL = os.getenv('TRACCAR_URL', 'http://localhost:8082').rstrip('/')
+TRACCAR_USER = os.getenv('TRACCAR_USER', '')
+TRACCAR_PASSWORD = os.getenv('TRACCAR_PASSWORD', '')
+
 # 2. إعدادات مكتبة SimpleJWT (تحديد مدة صلاحية التوكن)
 from datetime import timedelta
 
