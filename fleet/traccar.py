@@ -74,6 +74,8 @@ def _request(method, path, params=None, json=None, timeout=10, agency=None):
     try:
         return resp.json()
     except ValueError as exc:
+        if resp.status_code in (200, 201, 202, 204) and not resp.text.strip():
+            return None
         raise TraccarError("Réponse Traccar invalide (JSON attendu).") from exc
 
 
