@@ -126,18 +126,26 @@ class GpsDevicesView(APIView):
         try:
             device = create_device(name, unique_id, agency=agency)
         except TraccarNotConfigured:
-            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
-        except TraccarError:
+            return Response(
+                {"detail": "Traccar n'est pas configuré pour votre agence. Renseignez l'URL et le compte Traccar dans les Paramètres."},
+                status=503,
+            )
+        except TraccarError as exc:
             # uniqueId peut déjà exister côté Traccar : on le retrouve et on le renvoie
             try:
                 device = next(
                     (d for d in get_devices(agency=agency) if str(d.get('uniqueId', '')).strip() == unique_id),
                     None,
                 )
-            except (TraccarError, TraccarNotConfigured):
+            except TraccarError as exc2:
+                return Response({"detail": f"Impossible de joindre le serveur Traccar ({exc2})."}, status=502)
+            except TraccarNotConfigured:
                 device = None
             if not device:
-                return Response({"detail": "Impossible de créer le dispositif sur le serveur Traccar."}, status=502)
+                return Response(
+                    {"detail": f"Impossible de créer le dispositif sur le serveur Traccar ({exc})."},
+                    status=502,
+                )
         return Response(device)
 
 
