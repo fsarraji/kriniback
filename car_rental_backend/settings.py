@@ -166,7 +166,7 @@ AUTH_USER_MODEL = 'agency.CustomUser'
 # 1. إخبار Django REST Framework باستخدام JWT كوسيلة أساسية للمصادقة
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'agency.authentication.SubscriptionJWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS':[
         'django_filters.rest_framework.DjangoFilterBackend',

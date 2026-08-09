@@ -11,7 +11,7 @@ from django.db.models import Sum
 from fleet.models import Vehicle, Brand
 from contracts.models import Contract
 from clients.models import Client
-from .models import Agency, CustomUser
+from .models import Agency, CustomUser, Subscription
 from rest_framework import serializers, viewsets, filters
 from rest_framework.permissions import IsAdminUser
 from django_filters.rest_framework import DjangoFilterBackend
@@ -79,6 +79,25 @@ class UserViewSet(viewsets.ModelViewSet):
     filterset_fields = ['role', 'agency', 'is_active']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['username', 'id']
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    agency_name = serializers.ReadOnlyField(source='agency.nom_agence')
+    is_current = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = ['id', 'agency', 'agency_name', 'plan', 'price', 'start_date', 'end_date', 'status', 'is_current', 'created_at', 'updated_at']
+
+
+class SubscriptionViewSet(viewsets.ModelViewSet):
+    queryset = Subscription.objects.all()
+    serializer_class = SubscriptionSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['agency', 'plan', 'status']
+    search_fields = ['agency__nom_agence', 'plan']
+    ordering_fields = ['start_date', 'end_date', 'price', 'id']
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
