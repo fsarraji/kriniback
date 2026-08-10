@@ -75,6 +75,24 @@ class Vehicle(models.Model):
     sim_number = models.CharField(max_length=30, null=True, blank=True, verbose_name="Numéro carte SIM")
     sim_operator = models.CharField(max_length=50, null=True, blank=True, verbose_name="Opérateur télécom")
 
+    # Archivage (fin de travail)
+    is_archived = models.BooleanField(default=False, verbose_name="Archivé")
+    date_fin_travail = models.DateField(null=True, blank=True, verbose_name="Date de fin de travail")
+
+    # Suppression douce (masqué de la flotte, restauré par le super admin)
+    is_deleted = models.BooleanField(default=False, verbose_name="Supprimé")
+
+    @property
+    def km_loue_total(self):
+        """Nombre total de kilomètres parcourus par les locataires (contrats terminés)."""
+        from django.db.models import F, Sum
+        result = self.contracts.filter(
+            statut='TERMINE',
+            km_retour__isnull=False,
+            km_retour__gte=F('km_sortie'),
+        ).aggregate(total=Sum(F('km_retour') - F('km_sortie')))
+        return result.get('total') or 0
+
     def __str__(self):
         return f"{self.marque} {self.modele} - {self.matricule}"
 

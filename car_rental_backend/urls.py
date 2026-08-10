@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView, AccountMeView, PublicAgencyViewSet, SubscriptionViewSet # استدعاء لوحة القيادة
-from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet, EvaluationViewSet
+from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet, EvaluationViewSet, VehicleCheckUniqueView
 from fleet.gps_views import GpsPositionsView, GpsVehiclePositionView, GpsDevicesView, GpsHistoryView
 from clients.views import ClientViewSet, ClientRegisterView, ClientAccountView, ClientCheckUniqueView
 from contracts.views import ContractViewSet, PdfJobViewSet, BookingRequestViewSet, ReservationViewSet
@@ -38,6 +38,9 @@ urlpatterns =[
     path('api/clients/register/', ClientRegisterView.as_view(), name='client_register'),
     path('api/clients/me/', ClientAccountView.as_view(), name='client_me'),
     path('api/clients/check-unique/', ClientCheckUniqueView.as_view(), name='client_check_unique'),
+
+    # مسار التحقق من التفرد (الماريكول) — قبل الـ router لتجنب التعارض مع vehicles/{pk}/
+    path('api/vehicles/check-unique/', VehicleCheckUniqueView.as_view(), name='vehicle_check_unique'),
 
     # مسار الحساب الشخصي للمستخدم المتصل — قبل الـ router لتجنب التعارض مع users/{pk}/
     path('api/users/me/', AccountMeView.as_view(), name='account_me'),

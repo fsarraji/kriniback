@@ -1,13 +1,29 @@
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import F, Q, Sum
 from datetime import datetime
 
 from .models import Vehicle, Brand, ModelCar, Evaluation
 from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer, EvaluationSerializer
 from .traccar import TraccarError, TraccarNotConfigured, create_device, get_devices, update_device
 from contracts.models import Contract
+
+
+def _annotate_km_loue(qs):
+    """Calcule le kilométrage loué (km parcourus dans les contrats terminés)."""
+    return qs.annotate(
+        km_loue=Sum(
+            F('contracts__km_retour') - F('contracts__km_sortie'),
+            filter=Q(
+                contracts__statut='TERMINE',
+                contracts__km_retour__isnull=False,
+                contracts__km_retour__gte=F('contracts__km_sortie'),
+            ),
+        )
+    )
 
 
 def _sync_traccar_device(vehicle, agency):
@@ -48,15 +64,23 @@ class VehicleViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['statut', 'carburant', 'marque', 'annee']
+    filterset_fields = ['statut', 'carburant', 'marque', 'annee', 'is_archived', 'is_deleted']
     search_fields = ['matricule', 'marque__name', 'modele__name']
     ordering_fields = ['prix_par_jour', 'kilometrage', 'annee', 'id']
 
     def get_queryset(self):
-        base = Vehicle.objects.select_related('marque', 'modele', 'agency')
+        base = _annotate_km_loue(Vehicle.objects.select_related('marque', 'modele', 'agency'))
         if self.request.user.is_superuser:
-            return base
-        return base.filter(agency=self.request.user.agency)
+            qs = base
+        else:
+            qs = base.filter(agency=self.request.user.agency)
+        # Suppression douce : masquée pour tous sauf le super admin qui consulte les véhicules supprimés.
+        if self.request.query_params.get('include_deleted') != '1' or not self.request.user.is_superuser:
+            qs = qs.filter(is_deleted=False)
+        # Les véhicules archivés (fin de travail) sont masqués par défaut.
+        if self.request.query_params.get('include_archived') != '1':
+            qs = qs.filter(is_archived=False)
+        return qs
 
     def perform_create(self, serializer):
         agency = self.request.user.agency
@@ -84,6 +108,14 @@ class VehicleViewSet(viewsets.ModelViewSet):
             except (TraccarError, TraccarNotConfigured):
                 pass
 
+    def destroy(self, request, *args, **kwargs):
+        """Suppression douce : le véhicule n'est pas supprimé de la base,
+        il est masqué de la flotte et pourra être restauré par le super admin."""
+        obj = self.get_object()
+        obj.is_deleted = True
+        obj.save(update_fields=['is_deleted'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['get'])
     def available_cars(self, request):
         start_date_str = request.query_params.get('start_date')
@@ -110,10 +142,39 @@ class VehicleViewSet(viewsets.ModelViewSet):
         overlapping_contracts = Contract.objects.filter(**contract_filters)
         reserved_vehicle_ids = overlapping_contracts.values_list('vehicle_id', flat=True)
         vehicle_queryset = Vehicle.objects.all() if request.user.is_superuser else Vehicle.objects.filter(agency=agency)
-        available_vehicles = vehicle_queryset.exclude(id__in=reserved_vehicle_ids)
+        vehicle_queryset = _annotate_km_loue(vehicle_queryset)
+        available_vehicles = vehicle_queryset.exclude(id__in=reserved_vehicle_ids).filter(is_archived=False, is_deleted=False)
 
         serializer = self.get_serializer(available_vehicles, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class VehicleCheckUniqueView(APIView):
+    """Vérifie en temps réel (après la saisie) si un matricule est déjà utilisé
+    par un autre véhicule. `exclude_id` permet d'exclure le véhicule courant
+    lors de l'édition."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    ALLOWED_FIELDS = {'matricule'}
+
+    def get(self, request):
+        field = request.query_params.get('field', '')
+        value = (request.query_params.get('value') or '').strip()
+        exclude_id = request.query_params.get('exclude_id')
+
+        if field not in self.ALLOWED_FIELDS or not value:
+            return Response({'available': True, 'field': field, 'value': value})
+
+        qs = Vehicle.objects.all()
+        if exclude_id:
+            qs = qs.exclude(pk=exclude_id)
+
+        exists = qs.filter(**{field: value}).exists()
+        return Response({
+            'available': not exists,
+            'field': field,
+            'value': value,
+        })
+
 
 class BrandViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Brand.objects.all().order_by('name')
@@ -181,7 +242,6 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     """
     عرض السيارات المتاحة للجميع بدون تسجيل دخول
     """
-    queryset = Vehicle.objects.filter(statut='Available')
     serializer_class = VehicleSerializer
     permission_classes = [permissions.AllowAny]
     
@@ -189,3 +249,8 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['carburant', 'marque', 'marque__name', 'modele__name', 'agency__nom_agence']
     search_fields = ['marque__name', 'modele__name', 'agency__nom_agence']
     ordering_fields = ['prix_par_jour', 'annee']
+
+    def get_queryset(self):
+        return _annotate_km_loue(
+            Vehicle.objects.filter(statut='Available', is_archived=False, is_deleted=False)
+        )

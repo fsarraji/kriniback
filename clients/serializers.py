@@ -5,6 +5,7 @@ from agency.models import CustomUser
 
 class ClientSerializer(serializers.ModelSerializer):
     last_rental = serializers.SerializerMethodField()
+    contrats_count = serializers.SerializerMethodField()
 
     # Champs uniques au niveau de l'agence (vérifiés après la saisie côté front)
     UNIQUE_FIELDS = {
@@ -27,6 +28,9 @@ class ClientSerializer(serializers.ModelSerializer):
                 'date': last_contract.date_creation.strftime('%b %d, %Y')
             }
         return None
+
+    def get_contrats_count(self, obj):
+        return len(obj.contracts.all())
 
     def validate(self, data):
         # Normaliser les chaînes vides en None pour éviter les conflits d'unicité

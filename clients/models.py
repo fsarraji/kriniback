@@ -32,6 +32,10 @@ class Client(models.Model):
 
     # حساب client (pour l'inscription et la connexion en ligne)
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='client_profile', verbose_name="Compte utilisateur")
+
+    # Suppression douce (masqué de l'annuaire, restauré par le super admin)
+    is_deleted = models.BooleanField(default=False, verbose_name="Supprimé")
+
     class Meta:
         # لضمان عدم تكرار رقم البطاقة الوطنية داخل *نفس الوكالة* فقط
         unique_together = ['agency', 'cin_passport']

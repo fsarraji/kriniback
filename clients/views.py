@@ -31,11 +31,24 @@ class ClientViewSet(viewsets.ModelViewSet):
             )
         )
         if self.request.user.is_superuser:
-            return base
-        return base.filter(agency=self.request.user.agency)
+            qs = base
+        else:
+            qs = base.filter(agency=self.request.user.agency)
+        # Suppression douce : masqués pour tous sauf le super admin qui consulte les clients supprimés.
+        if self.request.query_params.get('include_deleted') != '1' or not self.request.user.is_superuser:
+            qs = qs.filter(is_deleted=False)
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(agency=self.request.user.agency)
+
+    def destroy(self, request, *args, **kwargs):
+        """Suppression douce : le client n'est pas supprimé de la base,
+        il est masqué de l'annuaire et pourra être restauré par le super admin."""
+        obj = self.get_object()
+        obj.is_deleted = True
+        obj.save(update_fields=['is_deleted'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ClientCheckUniqueView(APIView):

@@ -23,6 +23,7 @@ class VehicleSerializer(serializers.ModelSerializer):
     agency_details = SimpleAgencySerializer(source='agency', read_only=True)
     rating_avg = serializers.SerializerMethodField()
     rating_count = serializers.SerializerMethodField()
+    km_loue = serializers.SerializerMethodField()
 
     class Meta:
         model = Vehicle
@@ -38,6 +39,12 @@ class VehicleSerializer(serializers.ModelSerializer):
 
     def get_rating_count(self, obj):
         return obj.evaluations.count()
+
+    def get_km_loue(self, obj):
+        # Utilise l'annotation (listes) si présente, sinon calcul direct.
+        if getattr(obj, 'km_loue', None) is not None:
+            return obj.km_loue
+        return obj.km_loue_total
 
 class EvaluationSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
