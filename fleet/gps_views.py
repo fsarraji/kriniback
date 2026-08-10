@@ -22,6 +22,7 @@ from .traccar import (
     get_route,
     normalize_position,
     positions_by_device,
+    update_device_accumulators,
 )
 
 
@@ -62,6 +63,22 @@ def _vehicle_payload(vehicle, device_id, position):
     return data
 
 
+def _sync_kilometrage(vehicle, position):
+    """Synchronise Vehicle.kilometrage depuis la position Traccar.
+
+    Traccar est la source de vérité du kilométrage : dès que la valeur entière
+    (km) de l'odomètre du dernier point change, on l'écrit dans Krini. Aucune
+    écriture si la valeur n'a pas franchi un seuil de 1 km.
+    """
+    normalized = normalize_position(position)
+    if not normalized or normalized.get('odometer') is None:
+        return
+    new_km = int(round(normalized['odometer'] / 1000.0))
+    if new_km != vehicle.kilometrage:
+        vehicle.kilometrage = new_km
+        vehicle.save(update_fields=['kilometrage'])
+
+
 class GpsPositionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -79,6 +96,7 @@ class GpsPositionsView(APIView):
         for vehicle in vehicles:
             device_id = _resolve_device_id(vehicle, devices_by_id)
             position = positions.get(device_id) if device_id else None
+            _sync_kilometrage(vehicle, position)
             results.append(_vehicle_payload(vehicle, device_id, position))
 
         return Response({
@@ -100,6 +118,7 @@ class GpsVehiclePositionView(APIView):
             devices_by_id, positions = {}, {}
         device_id = _resolve_device_id(vehicle, devices_by_id)
         position = positions.get(device_id) if device_id else None
+        _sync_kilometrage(vehicle, position)
         return Response(_vehicle_payload(vehicle, device_id, position))
 
 
@@ -193,3 +212,87 @@ class GpsHistoryView(APIView):
             return Response({"detail": str(exc)}, status=502)
 
         return Response({"vehicle_id": vehicle.id, "route": [normalize_position(p) for p in route]})
+
+
+class GpsSetOdometerView(APIView):
+    """POST /api/gps/odometer/ — Corrige le kilométrage (odomètre) d'un véhicule sur Traccar.
+
+    Corps JSON attendu :
+        {"vehicle_id": 7, "km": 45200, "update_krini": false}
+        {"device_id": 123, "km": 45200}   (dispositif lié à un véhicule de l'agence)
+
+    Le champ totalDistance de Traccar est exprimé en mètres ; km est converti
+    automatiquement. Met à jour la dernière position du dispositif.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data or {}
+        km = data.get('km')
+        vehicle_id = data.get('vehicle_id')
+        device_id = data.get('device_id')
+        update_krini = str(data.get('update_krini', '')).lower() in ['true', '1', 'yes', 'on']
+        hours = data.get('hours')
+
+        try:
+            km = float(km)
+        except (TypeError, ValueError):
+            return Response({"detail": "Le champ km (kilométrage) est requis et doit être un nombre."}, status=400)
+        if km < 0:
+            return Response({"detail": "Le kilométrage doit être positif."}, status=400)
+
+        if vehicle_id:
+            vehicle = _scoped_vehicles(request).filter(pk=vehicle_id).first()
+            if not vehicle:
+                return Response({"detail": "Véhicule introuvable."}, status=404)
+            device_id = vehicle.traccar_device_id
+            if not device_id:
+                return Response({"detail": "Ce véhicule n'a pas de dispositif Traccar associé."}, status=400)
+        elif device_id:
+            device_id = int(device_id)
+            vehicle = _scoped_vehicles(request).filter(traccar_device_id=device_id).first()
+            if not vehicle:
+                return Response(
+                    {"detail": "Ce dispositif Traccar n'est lié à aucun véhicule de votre agence."},
+                    status=403,
+                )
+        else:
+            return Response({"detail": "Précisez vehicle_id ou device_id."}, status=400)
+
+        try:
+            before = normalize_position(get_device_position(device_id, agency=request.user.agency))
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError as exc:
+            return Response({"detail": str(exc)}, status=502)
+
+        try:
+            update_device_accumulators(
+                device_id,
+                total_distance_m=km * 1000,
+                hours=hours,
+                agency=request.user.agency,
+            )
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError as exc:
+            return Response({"detail": str(exc)}, status=502)
+
+        try:
+            after = normalize_position(get_device_position(device_id, agency=request.user.agency))
+        except (TraccarNotConfigured, TraccarError):
+            after = None
+
+        if update_krini:
+            vehicle.kilometrage = int(round(km))
+            vehicle.save(update_fields=['kilometrage'])
+
+        return Response({
+            "vehicle_id": vehicle.id,
+            "device_id": device_id,
+            "km": km,
+            "before": before,
+            "position": after,
+            "update_krini": update_krini,
+            "kilometrage_krini": vehicle.kilometrage if update_krini else None,
+        })

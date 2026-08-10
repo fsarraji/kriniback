@@ -98,8 +98,12 @@ def get_positions(agency=None):
 
 
 def get_device_position(device_id, agency=None):
-    """Dernière position connue d'un dispositif (ou None si inconnue)."""
-    positions = _request("GET", f"/positions/device/{device_id}", agency=agency) or []
+    """Dernière position connue d'un dispositif (ou None si inconnue).
+
+    Utilise GET /api/positions?deviceId=... (l'ancien endpoint
+    /api/positions/device/{id} est absent sur les versions récentes de Traccar).
+    """
+    positions = _request("GET", "/positions", params={"deviceId": device_id}, agency=agency) or []
     return positions[-1] if positions else None
 
 
@@ -120,6 +124,21 @@ def update_device(device_id, name=None, unique_id=None, agency=None):
     if unique_id is not None:
         payload["uniqueId"] = unique_id
     return _request("PUT", f"/devices/{device_id}", json=payload, agency=agency)
+
+
+def update_device_accumulators(device_id, total_distance_m=None, hours=None, agency=None):
+    """Corrige le total kilométrique (odomètre) et/ou les heures moteur d'un dispositif.
+
+    Utilise l'endpoint officiel Traccar PUT /api/devices/{id}/accumulators qui met à
+    jour la dernière position du dispositif (le champ totalDistance est en mètres,
+    hours en heures). Retourne None (réponse 204) ou lève TraccarError.
+    """
+    payload = {"deviceId": device_id}
+    if total_distance_m is not None:
+        payload["totalDistance"] = total_distance_m
+    if hours is not None:
+        payload["hours"] = hours
+    return _request("PUT", f"/devices/{device_id}/accumulators", json=payload, agency=agency)
 
 
 def get_route(device_id, from_iso, to_iso, agency=None):

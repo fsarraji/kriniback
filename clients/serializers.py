@@ -6,6 +6,14 @@ from agency.models import CustomUser
 class ClientSerializer(serializers.ModelSerializer):
     last_rental = serializers.SerializerMethodField()
 
+    # Champs uniques au niveau de l'agence (vérifiés après la saisie côté front)
+    UNIQUE_FIELDS = {
+        'cin_passport': 'CIN/passeport',
+        'email': 'email',
+        'telephone': 'téléphone',
+        'permis_conduite': 'permis de conduire',
+    }
+
     class Meta:
         model = Client
         fields = '__all__'
@@ -19,6 +27,33 @@ class ClientSerializer(serializers.ModelSerializer):
                 'date': last_contract.date_creation.strftime('%b %d, %Y')
             }
         return None
+
+    def validate(self, data):
+        # Normaliser les chaînes vides en None pour éviter les conflits d'unicité
+        for field in self.UNIQUE_FIELDS:
+            if field in data and data[field] is not None and str(data[field]).strip() == '':
+                data[field] = None
+
+        request = self.context.get('request')
+        agency = getattr(getattr(request, 'user', None), 'agency', None)
+
+        # Si l'utilisateur n'a pas d'agence (superuser), on contrôle globalement
+        if not agency:
+            return data
+
+        instance_id = getattr(self.instance, 'pk', None)
+        for field, label in self.UNIQUE_FIELDS.items():
+            value = data.get(field)
+            if value is None or value == '':
+                continue
+            qs = Client.objects.filter(agency=agency, **{field: value})
+            if instance_id:
+                qs = qs.exclude(pk=instance_id)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {field: f"Un client de votre agence utilise déjà cet {label}."}
+                )
+        return data
 
 
 class ClientRegisterSerializer(serializers.ModelSerializer):

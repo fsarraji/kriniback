@@ -38,6 +38,35 @@ class ClientViewSet(viewsets.ModelViewSet):
         serializer.save(agency=self.request.user.agency)
 
 
+class ClientCheckUniqueView(APIView):
+    """Vérifie en temps réel (après la saisie) si une valeur est déjà utilisée
+    par un autre client de la même agence."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    ALLOWED_FIELDS = {'cin_passport', 'email', 'telephone', 'permis_conduite'}
+
+    def get(self, request):
+        field = request.query_params.get('field', '')
+        value = (request.query_params.get('value') or '').strip()
+        exclude_id = request.query_params.get('exclude_id')
+
+        if field not in self.ALLOWED_FIELDS or not value:
+            return Response({'available': True, 'field': field, 'value': value})
+
+        qs = Client.objects.all()
+        if not request.user.is_superuser:
+            qs = qs.filter(agency=request.user.agency)
+        if exclude_id:
+            qs = qs.exclude(pk=exclude_id)
+
+        exists = qs.filter(**{field: value}).exists()
+        return Response({
+            'available': not exists,
+            'field': field,
+            'value': value,
+        })
+
+
 class ClientRegisterView(APIView):
     """Inscription publique d'un client (compte + fiche avec documents)."""
     permission_classes = [permissions.AllowAny]
