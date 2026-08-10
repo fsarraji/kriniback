@@ -132,6 +132,7 @@ class DashboardStatsView(APIView):
         total_vehicles = vehicles_qs.count()
         available_vehicles = vehicles_qs.filter(statut='Available').count()
         rented_vehicles = vehicles_qs.filter(statut='Rented').count()
+        maintenance_vehicles = vehicles_qs.filter(statut='Maintenance').count()
         active_contracts = contracts_qs.filter(statut='EN_COURS').count()
         total_clients = clients_qs.count()
 
@@ -140,6 +141,17 @@ class DashboardStatsView(APIView):
         revenue = contracts_qs.filter(
             date_creation__month=current_month
         ).aggregate(Sum('montant_total'))['montant_total__sum'] or 0
+
+        # 2b. tarif journalier moyen sur les contrats du mois (jours > 0)
+        monthly_contracts = contracts_qs.filter(
+            date_creation__month=current_month
+        ).exclude(jours__isnull=True).exclude(jours=0).exclude(montant_total__isnull=True)
+        rate_values = [
+            c.montant_total / c.jours
+            for c in monthly_contracts
+            if c.jours and c.montant_total
+        ]
+        avg_daily_rate = round(sum(rate_values) / len(rate_values)) if rate_values else None
 
         # 3. التنبيهات (Alerts) - السيارات التي سينتهي تأمينها أو فحصها التقني قريباً (أقل من 30 يوم)
         insurance_alerts = vehicles_qs.filter(
@@ -161,9 +173,11 @@ class DashboardStatsView(APIView):
                 'total_vehicles': total_vehicles,
                 'available_vehicles': available_vehicles,
                 'rented_vehicles': rented_vehicles,
+                'maintenance_vehicles': maintenance_vehicles,
                 'active_contracts': active_contracts,
                 'total_clients': total_clients,
                 'revenue_this_month': revenue,
+                'avg_daily_rate': avg_daily_rate,
                 'agency_name': agency.nom_agence if agency else "Super Admin"
             },
             'alerts': {
