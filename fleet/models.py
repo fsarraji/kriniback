@@ -1,21 +1,6 @@
-import os
-import re
-
 from django.db import models
 from agency.models import Agency
-
-
-def _safe(value, fallback='x'):
-    s = re.sub(r'[^A-Za-z0-9]+', '-', str(value or ''))
-    return s.strip('-') or fallback
-
-
-def vehicle_image_upload_to(instance, filename):
-    marque = _safe(instance.marque.name) if instance.marque_id else 'x'
-    modele = _safe(instance.modele.name) if instance.modele_id else 'x'
-    matricule = _safe(instance.matricule)
-    ext = os.path.splitext(filename)[1].lower()
-    return f'vehicles_images/{marque}-{modele}-{matricule}{ext}'
+from car_rental_backend.uploads import vehicle_image_upload_to
 
 
 class Brand(models.Model):

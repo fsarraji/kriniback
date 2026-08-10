@@ -50,7 +50,7 @@ python manage.py check_storage
 ```
 
 Attendu :
-- `Backend actif : storages.backends.s3boto3.S3Boto3Storage`
+- `Backend actif : car_rental_backend.storage.OptimizedS3Storage`
 - `Variables S3/Supabase définies : OUI`
 - `=> Stockage actif : SUPABASE STORAGE (S3). Les images persisteront.`
 
@@ -62,7 +62,12 @@ Les anciennes images sont perdues (disque éphémère). Il faut ré-uploader les
 
 - Bascule S3 : `car_rental_backend/settings.py` (bloc `if AWS_ACCESS_KEY_ID and ...`)
   - ⚠️ **Django ≥ 5.1** : `DEFAULT_FILE_STORAGE` seul est **ignoré**. Il faut définir
-    `STORAGES['default']['BACKEND'] = 'storages.backends.s3boto3.S3Boto3Storage'` (fait dans ce repo).
+    `STORAGES['default']['BACKEND'] = 'car_rental_backend.storage.OptimizedS3Storage'` (fait dans ce repo).
+  - ℹ️ Toutes les images sont optimisées à l'écriture (EXIF, redimensionnement max 1600px,
+    compression JPEG) via `car_rental_backend/images.py`.
+  - ℹ️ Chaque agence possède un dossier à la racine media : `<agence>/vehicles_images`,
+    `<agence>/clients_documents/cin|permis`, `<agence>/agency_logos`, `<agence>/agency_cachets`
+    (voir `car_rental_backend/uploads.py`).
 - Diagnostic : `fleet/management/commands/check_storage.py`
 - URL des images côté frontend : `src/apiUrl.js` (`resolveMediaUrl`)
 

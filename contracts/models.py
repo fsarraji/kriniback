@@ -3,6 +3,7 @@ from agency.models import Agency, CustomUser
 from fleet.models import Vehicle
 from clients.models import Client
 from django.utils import timezone
+from car_rental_backend.uploads import pdf_job_upload_to
 
 class Contract(models.Model):
     # حالات العقد
@@ -190,7 +191,7 @@ class PdfJob(models.Model):
     with_cachet = models.BooleanField(default=False, verbose_name="Avec cachet")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     error_message = models.TextField(null=True, blank=True)
-    pdf_file = models.FileField(upload_to='pdf_jobs/', null=True, blank=True)
+    pdf_file = models.FileField(upload_to=pdf_job_upload_to, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

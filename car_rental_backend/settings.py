@@ -217,7 +217,7 @@ AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1') # حدد ا
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     # Use django-storages with S3 backend
     # Django >= 5.1 : STORAGES['default'] est la config canonique (DEFAULT_FILE_STORAGE est legacy/ignoré)
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    DEFAULT_FILE_STORAGE = 'car_rental_backend.storage.OptimizedS3Storage'
     STORAGES = {
         'default': {'BACKEND': DEFAULT_FILE_STORAGE},
         'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
@@ -247,7 +247,11 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
         f"/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
     )
 else:
-    # Fallback to local storage
+    # Fallback to local storage (optimise aussi les images à l'écriture)
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    STORAGES = {
+        'default': {'BACKEND': 'car_rental_backend.storage.OptimizedFileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    }
 

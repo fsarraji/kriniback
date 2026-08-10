@@ -2,6 +2,7 @@ from django.db import models
 from agency.models import Agency, CustomUser
 from fleet.models import Vehicle
 from django.utils import timezone
+from car_rental_backend.uploads import expense_receipt_upload_to
 
 class Expense(models.Model):
     CATEGORY_CHOICES = [
@@ -22,7 +23,7 @@ class Expense(models.Model):
     title = models.CharField(max_length=200, verbose_name="عنوان المصروف")
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="المبلغ")
     expense_date = models.DateField(default=timezone.now, verbose_name="تاريخ المصروف")
-    receipt_image = models.ImageField(upload_to='expenses_receipts/', null=True, blank=True, verbose_name="صورة الوصل")
+    receipt_image = models.ImageField(upload_to=expense_receipt_upload_to, null=True, blank=True, verbose_name="صورة الوصل")
     notes = models.TextField(null=True, blank=True, verbose_name="ملاحظات")
 
     created_at = models.DateTimeField(auto_now_add=True)

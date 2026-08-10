@@ -1,25 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-import os
-import re
-
-
-def _safe(value, fallback='agence'):
-    s = re.sub(r'[^A-Za-z0-9]+', '-', str(value or ''))
-    return s.strip('-') or fallback
-
-
-def agency_logo_upload_to(instance, filename):
-    name = _safe(instance.nom_agence)
-    ext = os.path.splitext(filename)[1].lower()
-    return f'agency_logos/{name}{ext}'
-
-
-def agency_cachet_upload_to(instance, filename):
-    name = _safe(instance.nom_agence)
-    ext = os.path.splitext(filename)[1].lower()
-    return f'agency_cachets/{name}{ext}'
+from car_rental_backend.uploads import agency_logo_upload_to, agency_cachet_upload_to
 
 # 1. Modèle de l'agence (Société)
 class Agency(models.Model):

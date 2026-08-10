@@ -1,5 +1,6 @@
 from django.db import models
 from agency.models import Agency, CustomUser # استدعاء نموذج الوكالة
+from car_rental_backend.uploads import client_document_upload_cin, client_document_upload_permis
 
 class Client(models.Model):
     SEXE_CHOICES = (
@@ -27,8 +28,8 @@ class Client(models.Model):
     remarques = models.TextField(blank=True, null=True, verbose_name="ملاحظات حول الزبون")
     
     # مستندات مرفقة (Scans/Images)
-    scan_cin = models.ImageField(upload_to='clients_documents/cin/', null=True, blank=True, verbose_name="صورة البطاقة الوطنية/الجواز")
-    scan_permis = models.ImageField(upload_to='clients_documents/permis/', null=True, blank=True, verbose_name="صورة رخصة السياقة")
+    scan_cin = models.ImageField(upload_to=client_document_upload_cin, null=True, blank=True, verbose_name="صورة البطاقة الوطنية/الجواز")
+    scan_permis = models.ImageField(upload_to=client_document_upload_permis, null=True, blank=True, verbose_name="صورة رخصة السياقة")
 
     # حساب client (pour l'inscription et la connexion en ligne)
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='client_profile', verbose_name="Compte utilisateur")
