@@ -9,7 +9,7 @@ from datetime import datetime
 from .models import Vehicle, Brand, ModelCar, Evaluation
 from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer, EvaluationSerializer
 from .traccar import TraccarError, TraccarNotConfigured, create_device, get_devices, update_device
-from contracts.models import Contract
+from contracts.models import Contract, Reservation
 
 
 def _annotate_km_loue(qs):
@@ -251,6 +251,72 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['prix_par_jour', 'annee']
 
     def get_queryset(self):
-        return _annotate_km_loue(
-            Vehicle.objects.filter(statut='Available', is_archived=False, is_deleted=False)
-        )
+        qs = Vehicle.objects.filter(is_archived=False, is_deleted=False)
+
+        start_str = self.request.query_params.get('date_sortie')
+        end_str = self.request.query_params.get('date_retour')
+
+        if start_str and end_str:
+            try:
+                start_date = datetime.fromisoformat(start_str)
+                end_date = datetime.fromisoformat(end_str)
+            except ValueError:
+                start_date = end_date = None
+
+            if start_date and end_date:
+                # Disponibilité dans l'intervalle demandé : on exclut les véhicules
+                # ayant un contrat (RESERVE/EN_COURS) ou une réservation active
+                # (PENDING/CONFIRMED) qui chevauche [date_sortie, date_retour].
+                busy_ids = Contract.objects.filter(
+                    statut__in=['RESERVE', 'EN_COURS'],
+                    date_sortie__lt=end_date,
+                    date_retour_prevue__gt=start_date,
+                ).values_list('vehicle_id', flat=True).union(
+                    Reservation.objects.filter(
+                        statut__in=['PENDING', 'CONFIRMED'],
+                        date_sortie__lt=end_date,
+                        date_retour_prevue__gt=start_date,
+                    ).values_list('vehicle_id', flat=True)
+                )
+                qs = qs.exclude(id__in=busy_ids)
+            else:
+                # Dates invalides : on conserve le comportement par défaut.
+                qs = qs.filter(statut='Available')
+        else:
+            # Sans dates, on garde le filtre historique « statut Available ».
+            qs = qs.filter(statut='Available')
+
+        return _annotate_km_loue(qs)
+
+    @action(detail=True, methods=['get'], url_path='unavailable-dates')
+    def unavailable_dates(self, request, pk=None):
+        """Plages de dates où le véhicule est indisponible (contrats en cours
+        + réservations actives). Utilisé par les datepickers du front web pour
+        désactiver les dates non disponibles à la location."""
+        vehicle = self.get_object()
+        ranges = []
+
+        for c in Contract.objects.filter(
+            vehicle=vehicle,
+            statut__in=['RESERVE', 'EN_COURS'],
+        ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
+            ranges.append({
+                'start': c.date_sortie.isoformat(),
+                'end': c.date_retour_prevue.isoformat(),
+                'type': 'contract',
+                'id': c.id,
+            })
+
+        for r in Reservation.objects.filter(
+            vehicle=vehicle,
+            statut__in=['PENDING', 'CONFIRMED'],
+        ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
+            ranges.append({
+                'start': r.date_sortie.isoformat(),
+                'end': r.date_retour_prevue.isoformat(),
+                'type': 'reservation',
+                'id': r.id,
+            })
+
+        ranges.sort(key=lambda r: r['start'])
+        return Response({'unavailable': ranges})
