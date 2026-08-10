@@ -18,7 +18,7 @@ class ClientViewSet(viewsets.ModelViewSet):
     search_fields = ['cin_passport', 'nom', 'prenom', 'telephone']
     
     # 2. الفلترة الدقيقة (Filter) - مثلاً جلب الزبناء في القائمة السوداء فقط
-    filterset_fields = ['liste_noire']
+    filterset_fields = ['liste_noire', 'is_deleted']
     
     # 3. الترتيب (Ordering)
     ordering_fields = ['nom', 'id']
