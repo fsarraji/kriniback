@@ -151,6 +151,22 @@ def get_route(device_id, from_iso, to_iso, agency=None):
     ) or []
 
 
+def get_command_types(device_id, agency=None):
+    """Commandes supportées par le protocole du dispositif. Ex: [{type: 'engineStop'}, ...]"""
+    return _request("GET", "/commands/types", params={"deviceId": device_id}, agency=agency) or []
+
+
+def send_command(device_id, command_type, attributes=None, agency=None):
+    """Envoie immédiatement une commande au dispositif (ex: engineStop, engineResume, custom).
+
+    Retourne la commande créée côté Traccar {id, deviceId, type, attributes, ...}.
+    """
+    payload = {"deviceId": device_id, "type": command_type}
+    if attributes:
+        payload["attributes"] = attributes
+    return _request("POST", "/commands/send", json=payload, agency=agency)
+
+
 def positions_by_device(agency=None):
     """Dictionnaire {device_id: position} à partir de la liste des dernières positions."""
     return {p.get("deviceId"): p for p in get_positions(agency=agency) if p.get("deviceId")}

@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from agency.views import DashboardStatsView, CustomTokenObtainPairView, AgencyViewSet, UserViewSet, AgencySettingsView, AccountMeView, PublicAgencyViewSet, SubscriptionViewSet # استدعاء لوحة القيادة
 from fleet.views import VehicleViewSet, BrandViewSet, ModelCarViewSet, PublicVehicleViewSet, EvaluationViewSet, VehicleCheckUniqueView
-from fleet.gps_views import GpsPositionsView, GpsVehiclePositionView, GpsDevicesView, GpsHistoryView
+from fleet.gps_views import GpsPositionsView, GpsVehiclePositionView, GpsDevicesView, GpsHistoryView, GpsCommandsView
 from clients.views import ClientViewSet, ClientRegisterView, ClientAccountView, ClientCheckUniqueView
 from contracts.views import ContractViewSet, PdfJobViewSet, BookingRequestViewSet, ReservationViewSet
 from payments.views import PaymentViewSet
@@ -63,6 +63,7 @@ urlpatterns =[
     path('api/gps/positions/<int:pk>/', GpsVehiclePositionView.as_view(), name='gps_position_detail'),
     path('api/gps/devices/', GpsDevicesView.as_view(), name='gps_devices'),
     path('api/gps/history/', GpsHistoryView.as_view(), name='gps_history'),
+    path('api/gps/commands/', GpsCommandsView.as_view(), name='gps_commands'),
 ]
 
 # Servir les images (MEDIA) en mode développement / lorsque le stockage local est utilisé

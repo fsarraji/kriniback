@@ -17,11 +17,13 @@ from .traccar import (
     TraccarError,
     TraccarNotConfigured,
     create_device,
+    get_command_types,
     get_device_position,
     get_devices,
     get_route,
     normalize_position,
     positions_by_device,
+    send_command,
     update_device_accumulators,
 )
 
@@ -299,3 +301,80 @@ class GpsSetOdometerView(APIView):
             "update_krini": update_krini,
             "kilometrage_krini": vehicle.kilometrage if update_krini else None,
         })
+
+
+class GpsCommandsView(APIView):
+    """Commandes Traccar : liste des commandes supportées (GET) et envoi (POST).
+
+    - GET  /api/gps/commands/?vehicle_id=X   → commandes supportées par le dispositif
+    - POST /api/gps/commands/                → {vehicle_id, type, attributes?}
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _vehicle(self, request, vehicle_id):
+        vehicle = _scoped_vehicles(request).filter(pk=vehicle_id).first()
+        if not vehicle:
+            return None, Response({"detail": "Véhicule introuvable."}, status=404)
+        if not vehicle.traccar_device_id:
+            return None, Response({"detail": "Ce véhicule n'a pas de dispositif Traccar associé."}, status=400)
+        return vehicle, None
+
+    def get(self, request):
+        vehicle_id = request.query_params.get('vehicle_id')
+        if not vehicle_id:
+            return Response({"detail": "Paramètre vehicle_id requis."}, status=400)
+        vehicle, err = self._vehicle(request, vehicle_id)
+        if err:
+            return err
+        try:
+            types = get_command_types(vehicle.traccar_device_id, agency=request.user.agency)
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response({
+            "vehicle_id": vehicle.id,
+            "device_id": vehicle.traccar_device_id,
+            "commands": [t.get("type") for t in types if t.get("type")],
+        })
+
+    def post(self, request):
+        vehicle_id = request.data.get('vehicle_id')
+        command_type = (request.data.get('type') or '').strip()
+        attributes = request.data.get('attributes') or {}
+        if not isinstance(attributes, dict):
+            return Response({"detail": "Le champ attributes doit être un objet JSON."}, status=400)
+        if not vehicle_id:
+            return Response({"detail": "Le champ vehicle_id est requis."}, status=400)
+        if not command_type:
+            return Response({"detail": "Le champ type (commande Traccar) est requis."}, status=400)
+
+        vehicle, err = self._vehicle(request, vehicle_id)
+        if err:
+            return err
+
+        try:
+            supported = [
+                t.get("type") for t in get_command_types(vehicle.traccar_device_id, agency=request.user.agency) if t.get("type")
+            ]
+            if supported and command_type not in supported:
+                return Response({
+                    "detail": f"Commande « {command_type} » non supportée par ce dispositif. "
+                              f"Commandes disponibles : {', '.join(sorted(supported))}."
+                }, status=400)
+        except (TraccarNotConfigured, TraccarError):
+            pass  # on tente l'envoi ; Traccar rejettera lui-même un type inconnu
+
+        try:
+            result = send_command(
+                vehicle.traccar_device_id,
+                command_type,
+                attributes=attributes,
+                agency=request.user.agency,
+            )
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError as exc:
+            return Response({"detail": str(exc)}, status=502)
+
+        return Response({"status": "sent", "device_id": vehicle.traccar_device_id, "command": result})
