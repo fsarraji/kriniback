@@ -156,9 +156,38 @@ def positions_by_device(agency=None):
     return {p.get("deviceId"): p for p in get_positions(agency=agency) if p.get("deviceId")}
 
 
-def normalize_position(position):
-    """Transforme une position brute Traccar en objet propre pour l'API Krini."""
+def _position_has_fix(position):
+    """Vrai si la position Traccar contient des coordonnées réellement exploitables.
+
+    De nombreux traceurs (GT06, ...) envoient des paquets de statut sans fix GPS :
+    valid=False, latitude/longitude 0, fixTime à l'époque (1980). Traccar les stocke
+    et affiche le dispositif « online », mais elles ne doivent pas être traitées comme
+    une position réelle (sinon le véhicule apparaît à 0,0, au milieu du golfe de Guinée).
+    """
     if not position:
+        return False
+    if position.get("valid") is False:
+        return False
+    lat = position.get("latitude")
+    lon = position.get("longitude")
+    if lat in (None, 0) or lon in (None, 0):
+        return False
+    fix_time = position.get("fixTime")
+    if isinstance(fix_time, str) and len(fix_time) >= 4:
+        try:
+            if int(fix_time[:4]) < 2000:
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def normalize_position(position):
+    """Transforme une position brute Traccar en objet propre pour l'API Krini.
+
+    Retourne None si la position est absente ou sans fix GPS exploitable.
+    """
+    if not _position_has_fix(position):
         return None
     attributes = position.get("attributes") or {}
     return {

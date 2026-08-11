@@ -71,9 +71,12 @@ def _sync_kilometrage(vehicle, position):
     écriture si la valeur n'a pas franchi un seuil de 1 km.
     """
     normalized = normalize_position(position)
-    if not normalized or normalized.get('odometer') is None:
+    odometer = normalized.get('odometer') if normalized else None
+    # On ne remonte jamais un kilométrage nul : un totalDistance à 0 (traceur
+    # neuf ou position sans compteur) ne doit pas écraser le kilométrage réel.
+    if odometer is None or odometer <= 0:
         return
-    new_km = int(round(normalized['odometer'] / 1000.0))
+    new_km = int(round(odometer / 1000.0))
     if new_km != vehicle.kilometrage:
         vehicle.kilometrage = new_km
         vehicle.save(update_fields=['kilometrage'])
