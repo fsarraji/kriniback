@@ -353,6 +353,12 @@ class GpsCommandsView(APIView):
         if err:
             return err
 
+        if command_type == 'custom' and not str(attributes.get('data') or '').strip():
+            return Response({
+                "detail": "La commande personnalisée nécessite le champ attributes.data "
+                          "(les données hex à envoyer au boîtier)."
+            }, status=400)
+
         try:
             supported = [
                 t.get("type") for t in get_command_types(vehicle.traccar_device_id, agency=request.user.agency) if t.get("type")
