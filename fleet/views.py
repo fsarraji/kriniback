@@ -43,7 +43,7 @@ def _sync_traccar_device(vehicle, agency):
     ultérieure.
     """
     imei = (vehicle.gps_imei or '').strip()
-    if not imei or vehicle.gps_device_id:
+    if not imei or GpsDevice.objects.filter(vehicle=vehicle).exists():
         return
 
     name = vehicle.matricule or f'Véhicule {imei}'
@@ -71,7 +71,7 @@ def _push_kilometrage_to_traccar(vehicle, agency):
     N'écrit jamais un kilométrage nul : un traceur neuf ou un véhicule créé sans
     kilométrage ne doit pas écraser l'odomètre déjà enregistré côté Traccar.
     """
-    device_id = vehicle.traccar_device_id
+    device_id = GpsDevice.objects.filter(vehicle=vehicle).values_list('traccar_device_id', flat=True).first()
     km = vehicle.kilometrage
     if not device_id or km is None or km <= 0:
         return

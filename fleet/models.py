@@ -83,7 +83,10 @@ class Vehicle(models.Model):
     @property
     def traccar_device_id(self):
         """ID du dispositif Traccar lié (lu depuis la table GpsDevice, relation 1:1)."""
-        device = getattr(self, 'gps_device', None)
+        try:
+            device = self.gps_device
+        except (GpsDevice.DoesNotExist, AttributeError):
+            device = None
         return device.traccar_device_id if device else None
 
 
