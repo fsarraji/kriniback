@@ -26,6 +26,15 @@ def _annotate_km_loue(qs):
     )
 
 
+def _unlink_traccar_device(vehicle):
+    """Un dispositif Traccar ne peut être lié qu'à un seul véhicule :
+    s'il est déjà affecté à un autre véhicule, on le délie de ce dernier."""
+    device_id = vehicle.traccar_device_id
+    if not device_id:
+        return
+    Vehicle.objects.filter(traccar_device_id=device_id).exclude(pk=vehicle.pk).update(traccar_device_id=None)
+
+
 def _sync_traccar_device(vehicle, agency):
     """Enregistre le périphérique GPS (IMEI) du véhicule sur le serveur Traccar.
 
@@ -89,6 +98,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": "Votre compte n'est lié à aucune agence. Veuillez contacter l'administrateur."})
         vehicle = serializer.save(agency=agency)
         _sync_traccar_device(vehicle, agency)
+        _unlink_traccar_device(vehicle)
 
     def perform_update(self, serializer):
         old_imei = (serializer.instance.gps_imei or '').strip() if serializer.instance else None
@@ -107,6 +117,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 )
             except (TraccarError, TraccarNotConfigured):
                 pass
+        _unlink_traccar_device(vehicle)
 
     def destroy(self, request, *args, **kwargs):
         """Suppression douce : le véhicule n'est pas supprimé de la base,

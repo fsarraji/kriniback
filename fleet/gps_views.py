@@ -17,6 +17,7 @@ from .traccar import (
     TraccarError,
     TraccarNotConfigured,
     create_device,
+    delete_device,
     get_command_types,
     get_device_position,
     get_devices,
@@ -59,9 +60,15 @@ def _device_index(agency=None):
     return devices_by_name, positions
 
 
-def _vehicle_payload(vehicle, device_id, position):
+def _vehicle_payload(vehicle, device, position):
     data = VehicleSerializer(vehicle).data
     data['position'] = normalize_position(position)
+    data['gps_status'] = None
+    data['gps_last_update'] = None
+    if device:
+        status = device.get('status')
+        data['gps_status'] = status if status in ('online', 'offline') else None
+        data['gps_last_update'] = device.get('lastUpdate')
     return data
 
 
@@ -100,9 +107,10 @@ class GpsPositionsView(APIView):
         results = []
         for vehicle in vehicles:
             device_id = _resolve_device_id(vehicle, devices_by_id)
+            device = devices_by_id.get(device_id) if device_id else None
             position = positions.get(device_id) if device_id else None
             _sync_kilometrage(vehicle, position)
-            results.append(_vehicle_payload(vehicle, device_id, position))
+            results.append(_vehicle_payload(vehicle, device, position))
 
         return Response({
             "tracking": bool(devices_by_id),
@@ -122,19 +130,34 @@ class GpsVehiclePositionView(APIView):
         except (TraccarNotConfigured, TraccarError):
             devices_by_id, positions = {}, {}
         device_id = _resolve_device_id(vehicle, devices_by_id)
+        device = devices_by_id.get(device_id) if device_id else None
         position = positions.get(device_id) if device_id else None
         _sync_kilometrage(vehicle, position)
-        return Response(_vehicle_payload(vehicle, device_id, position))
+        return Response(_vehicle_payload(vehicle, device, position))
 
 
 class GpsDevicesView(APIView):
-    """Dispositifs Traccar : liste (GET) et création (POST) pour le mapping véhicule."""
+    """Dispositifs Traccar : liste (GET), création (POST) et suppression (DELETE)."""
 
     permission_classes = [permissions.IsAuthenticated]
 
+    def _devices_with_vehicles(self, request):
+        """Dispositifs Traccar enrichis du véhicule auquel chacun est associé."""
+        devices = get_devices(agency=request.user.agency)
+        linked = _scoped_vehicles(request).filter(traccar_device_id__isnull=False)
+        by_device = {v.traccar_device_id: v for v in linked}
+        return [
+            {
+                **d,
+                "vehicle_id": by_device.get(d.get("id")).id if by_device.get(d.get("id")) else None,
+                "vehicle_matricule": by_device.get(d.get("id")).matricule if by_device.get(d.get("id")) else None,
+            }
+            for d in devices
+        ]
+
     def get(self, request):
         try:
-            devices = get_devices(agency=request.user.agency)
+            devices = self._devices_with_vehicles(request)
         except TraccarNotConfigured:
             return Response({"tracking": False, "devices": []})
         except TraccarError as exc:
@@ -183,6 +206,90 @@ class GpsDevicesView(APIView):
                     status=502,
                 )
         return Response(device)
+
+    def delete(self, request):
+        """Supprime un dispositif Traccar et le dissocie de tout véhicule.
+
+        Paramètre : ?device_id=<id>
+        """
+        device_id = request.query_params.get('device_id')
+        if not device_id:
+            return Response({"detail": "Paramètre device_id requis."}, status=400)
+        try:
+            device_id = int(device_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "device_id doit être un entier."}, status=400)
+
+        try:
+            delete_device(device_id, agency=request.user.agency)
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError as exc:
+            return Response({"detail": str(exc)}, status=502)
+
+        _scoped_vehicles(request).filter(traccar_device_id=device_id).update(traccar_device_id=None)
+        return Response({"status": "deleted", "device_id": device_id})
+
+
+class GpsDeviceAssociateView(APIView):
+    """Association / dissociation d'un dispositif Traccar à un véhicule.
+
+    - POST {"device_id": 30, "vehicle_id": 7}   → associer (délie tout autre véhicule)
+    - POST {"device_id": 30}                     → dissocier
+    - POST {"dissociate_all": true}              → dissocier tous les dispositifs des véhicules
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data or {}
+        if str(data.get('dissociate_all', '')).lower() in ('true', '1', 'yes', 'on'):
+            count = _scoped_vehicles(request).filter(traccar_device_id__isnull=False).update(traccar_device_id=None)
+            return Response({"status": "dissociated_all", "vehicles": count})
+        try:
+            device_id = int(data.get('device_id'))
+        except (TypeError, ValueError):
+            return Response({"detail": "Le champ device_id est requis et doit être un entier."}, status=400)
+
+        vehicle = None
+        vehicle_id = data.get('vehicle_id')
+        if vehicle_id not in (None, ''):
+            try:
+                vehicle_id = int(vehicle_id)
+            except (TypeError, ValueError):
+                return Response({"detail": "vehicle_id doit être un entier."}, status=400)
+            vehicle = _scoped_vehicles(request).filter(pk=vehicle_id).first()
+            if not vehicle:
+                return Response({"detail": "Véhicule introuvable."}, status=404)
+
+        # Le dispositif doit exister sur le serveur Traccar du compte de l'agence.
+        try:
+            device = next(
+                (d for d in get_devices(agency=request.user.agency) if d.get('id') == device_id),
+                None,
+            )
+        except TraccarNotConfigured:
+            return Response({"detail": "Traccar n'est pas configuré pour votre agence."}, status=503)
+        except TraccarError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        if not device:
+            return Response({"detail": "Dispositif introuvable sur le serveur Traccar."}, status=404)
+
+        # Un dispositif ne peut être lié qu'à un seul véhicule : on le délie des autres.
+        qs = _scoped_vehicles(request).filter(traccar_device_id=device_id)
+        if vehicle:
+            qs = qs.exclude(pk=vehicle.pk)
+        qs.update(traccar_device_id=None)
+
+        if vehicle:
+            vehicle.traccar_device_id = device_id
+            imei = (device.get('uniqueId') or '').strip()
+            if imei:
+                vehicle.gps_imei = imei
+            vehicle.save(update_fields=['traccar_device_id', 'gps_imei'])
+            return Response({"status": "associated", "device_id": device_id, "vehicle_id": vehicle.id})
+
+        return Response({"status": "dissociated", "device_id": device_id})
 
 
 class GpsHistoryView(APIView):

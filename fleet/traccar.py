@@ -126,6 +126,11 @@ def update_device(device_id, name=None, unique_id=None, agency=None):
     return _request("PUT", f"/devices/{device_id}", json=payload, agency=agency)
 
 
+def delete_device(device_id, agency=None):
+    """Supprime un dispositif du serveur Traccar (réponse 204, retourne None)."""
+    return _request("DELETE", f"/devices/{device_id}", agency=agency)
+
+
 def update_device_accumulators(device_id, total_distance_m=None, hours=None, agency=None):
     """Corrige le total kilométrique (odomètre) et/ou les heures moteur d'un dispositif.
 
@@ -175,14 +180,15 @@ def positions_by_device(agency=None):
 def _position_has_fix(position):
     """Vrai si la position Traccar contient des coordonnées réellement exploitables.
 
-    De nombreux traceurs (GT06, ...) envoient des paquets de statut sans fix GPS :
-    valid=False, latitude/longitude 0, fixTime à l'époque (1980). Traccar les stocke
-    et affiche le dispositif « online », mais elles ne doivent pas être traitées comme
-    une position réelle (sinon le véhicule apparaît à 0,0, au milieu du golfe de Guinée).
+    De nombreux traceurs (GT06, ...) envoient des paquets de statut avec
+    valid=False (pas de nouveau fix GPS dans ce paquet) mais en réutilisant les
+    dernières coordonnées GPS connues : le dispositif est bien « online » côté
+    Traccar et sa position affichée est la dernière position réelle. On ne filtre
+    donc que les positions réellement inexploitables : coordonnées absentes/nulles
+    (le véhicule apparaîtrait à 0,0, au milieu du golfe de Guinée) ou fixTime
+    antérieur à 2000 (traceurs qui remontent l'époque).
     """
     if not position:
-        return False
-    if position.get("valid") is False:
         return False
     lat = position.get("latitude")
     lon = position.get("longitude")
