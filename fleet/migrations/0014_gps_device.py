@@ -5,12 +5,24 @@ from django.db import migrations, models
 
 
 def create_gps_devices(apps, schema_editor):
-    """Reporte chaque Vehicle.traccar_device_id existant dans la table GpsDevice."""
+    """Reporte chaque Vehicle.traccar_device_id existant dans la table GpsDevice.
+
+    L'ancien schéma n'imposait pas l'unicité de traccar_device_id : plusieurs
+    véhicules peuvent partager le même dispositif. On crée donc un seul
+    GpsDevice par (agence, dispositif), lié au premier véhicule (plus petit id) ;
+    les autres véhicules restent sans dispositif.
+    """
     Vehicle = apps.get_model('fleet', 'Vehicle')
     GpsDevice = apps.get_model('fleet', 'GpsDevice')
-    for vehicle in Vehicle.objects.exclude(traccar_device_id__isnull=True).iterator():
+    GpsDevice.objects.all().delete()
+    seen = set()
+    for vehicle in Vehicle.objects.exclude(traccar_device_id__isnull=True).order_by('id').iterator():
+        key = (vehicle.agency_id, vehicle.traccar_device_id)
+        if key in seen:
+            continue
+        seen.add(key)
         GpsDevice.objects.create(
-            agency=vehicle.agency,
+            agency_id=vehicle.agency_id,
             vehicle=vehicle,
             traccar_device_id=vehicle.traccar_device_id,
             name=vehicle.matricule or '',
