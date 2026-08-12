@@ -8,7 +8,14 @@ from datetime import datetime
 
 from .models import Vehicle, Brand, ModelCar, Evaluation, GpsDevice
 from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer, EvaluationSerializer
-from .traccar import TraccarError, TraccarNotConfigured, create_device, get_devices, update_device
+from .traccar import (
+    TraccarError,
+    TraccarNotConfigured,
+    create_device,
+    get_devices,
+    update_device,
+    update_device_accumulators,
+)
 from contracts.models import Contract, Reservation
 
 
@@ -58,6 +65,22 @@ def _sync_traccar_device(vehicle, agency):
         GpsDevice.attach(vehicle, device_id, agency, name=name, unique_id=imei)
 
 
+def _push_kilometrage_to_traccar(vehicle, agency):
+    """Pousse Vehicle.kilometrage (odomètre) vers le dispositif Traccar du véhicule.
+
+    N'écrit jamais un kilométrage nul : un traceur neuf ou un véhicule créé sans
+    kilométrage ne doit pas écraser l'odomètre déjà enregistré côté Traccar.
+    """
+    device_id = vehicle.traccar_device_id
+    km = vehicle.kilometrage
+    if not device_id or km is None or km <= 0:
+        return
+    try:
+        update_device_accumulators(device_id, total_distance_m=km * 1000, agency=agency)
+    except (TraccarError, TraccarNotConfigured):
+        pass
+
+
 class VehicleViewSet(viewsets.ModelViewSet):
     serializer_class = VehicleSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -88,11 +111,17 @@ class VehicleViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": "Votre compte n'est lié à aucune agence. Veuillez contacter l'administrateur."})
         vehicle = serializer.save(agency=agency)
         _sync_traccar_device(vehicle, agency)
+        _push_kilometrage_to_traccar(vehicle, agency)
 
     def perform_update(self, serializer):
         old_imei = (serializer.instance.gps_imei or '').strip() if serializer.instance else None
+        old_km = serializer.instance.kilometrage if serializer.instance else None
         vehicle = serializer.save()
         _sync_traccar_device(vehicle, self.request.user.agency)
+        # Le kilométrage saisi dans le formulaire est transféré vers Traccar
+        # (source de vérité de l'odomètre) si un dispositif est lié au véhicule.
+        if 'kilometrage' in serializer.validated_data and old_km != vehicle.kilometrage:
+            _push_kilometrage_to_traccar(vehicle, self.request.user.agency)
         # Si l'IMEI du véhicule change et qu'un dispositif Traccar est déjà lié,
         # on met à jour l'uniqueId côté serveur pour rester cohérent.
         new_imei = (vehicle.gps_imei or '').strip()
