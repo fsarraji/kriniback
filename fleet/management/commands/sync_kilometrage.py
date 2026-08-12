@@ -35,9 +35,9 @@ class Command(BaseCommand):
     def _resolve(self, ref):
         vehicle = None
         if str(ref).isdigit():
-            vehicle = Vehicle.objects.select_related('agency').filter(pk=int(ref)).first()
+            vehicle = Vehicle.objects.select_related('agency', 'gps_device').filter(pk=int(ref)).first()
         if vehicle is None:
-            vehicle = Vehicle.objects.select_related('agency').filter(matricule=ref).first()
+            vehicle = Vehicle.objects.select_related('agency', 'gps_device').filter(matricule=ref).first()
         if vehicle is None:
             raise CommandError(f"Véhicule introuvable : {ref}")
         return vehicle
@@ -50,7 +50,7 @@ class Command(BaseCommand):
             vehicles = [self._resolve(ref) for ref in refs]
         else:
             vehicles = list(
-                Vehicle.objects.select_related('agency').filter(traccar_device_id__isnull=False)
+                Vehicle.objects.select_related('agency', 'gps_device').filter(gps_device__isnull=False)
             )
 
         if not vehicles:
@@ -85,7 +85,10 @@ class Command(BaseCommand):
                 continue
 
             for vehicle in group:
-                position = normalize_position(positions.get(vehicle.traccar_device_id))
+                device_id = vehicle.traccar_device_id
+                if not device_id:
+                    continue
+                position = normalize_position(positions.get(device_id))
                 if not position or position.get('odometer') is None:
                     self.stdout.write(self.style.WARNING(
                         f"[{vehicle.matricule}] Pas de position / kilométrage Traccar."

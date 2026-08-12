@@ -53,7 +53,6 @@ class Vehicle(models.Model):
     
     image = models.ImageField(upload_to=vehicle_image_upload_to, null=True, blank=True)
     tarif_km_extra = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Tarif km supplémentaire (DH/km)")
-    traccar_device_id = models.BigIntegerField(null=True, blank=True, verbose_name="ID dispositif Traccar")
 
     # Dispositif GPS installé dans le véhicule
     gps_imei = models.CharField(max_length=50, null=True, blank=True, verbose_name="ID / IMEI du dispositif GPS")
@@ -80,6 +79,90 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return f"{self.marque} {self.modele} - {self.matricule}"
+
+    @property
+    def traccar_device_id(self):
+        """ID du dispositif Traccar lié (lu depuis la table GpsDevice, relation 1:1)."""
+        device = getattr(self, 'gps_device', None)
+        return device.traccar_device_id if device else None
+
+
+class GpsDevice(models.Model):
+    """Dispositif GPS ajouté au serveur Traccar (relation 1:1 avec un véhicule).
+
+    Le serveur Traccar reste la source de vérité (positions, statut, ...) ; cette
+    table conserve le lien dispositif ↔ véhicule de l'agence ainsi qu'une copie
+    des informations de base du dispositif (nom, IMEI, statut).
+    """
+
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='gps_devices', verbose_name="Agence")
+    vehicle = models.OneToOneField(
+        Vehicle,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gps_device',
+        verbose_name="Véhicule",
+    )
+    traccar_device_id = models.BigIntegerField(verbose_name="ID dispositif Traccar")
+    name = models.CharField(max_length=200, blank=True, default='', verbose_name="Nom du dispositif")
+    unique_id = models.CharField(max_length=100, blank=True, default='', verbose_name="ID / IMEI du dispositif GPS")
+    status = models.CharField(max_length=20, blank=True, default='', verbose_name="Statut (online/offline)")
+    last_update = models.DateTimeField(null=True, blank=True, verbose_name="Dernière mise à jour")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('agency', 'traccar_device_id')
+        ordering = ['-created_at']
+        verbose_name = "Dispositif GPS"
+        verbose_name_plural = "Dispositifs GPS"
+
+    def __str__(self):
+        return f"{self.name or 'Dispositif'} #{self.traccar_device_id}"
+
+    @classmethod
+    def attach(cls, vehicle, device_id, agency=None, name=None, unique_id=None):
+        """Attribue le dispositif Traccar `device_id` au véhicule (relation 1:1).
+
+        Délie ce dispositif de tout autre véhicule et délie ce véhicule de tout
+        autre dispositif, puis enregistre le lien. Retourne le GpsDevice.
+        """
+        agency = agency or vehicle.agency
+        cls.objects.filter(traccar_device_id=device_id, agency=agency).exclude(vehicle=vehicle).update(vehicle=None)
+        cls.objects.filter(vehicle=vehicle).exclude(traccar_device_id=device_id).update(vehicle=None)
+        device, _ = cls.objects.get_or_create(
+            agency=agency,
+            traccar_device_id=device_id,
+            defaults={'vehicle': vehicle, 'name': name or '', 'unique_id': unique_id or ''},
+        )
+        updates = []
+        if device.vehicle_id != vehicle.pk:
+            device.vehicle = vehicle
+            updates.append('vehicle')
+        if name is not None and (device.name or '') != name:
+            device.name = name
+            updates.append('name')
+        if unique_id is not None and (device.unique_id or '') != unique_id:
+            device.unique_id = unique_id
+            updates.append('unique_id')
+        if updates:
+            device.save(update_fields=updates)
+        return device
+
+    @classmethod
+    def detach(cls, vehicle):
+        """Délie le véhicule de son dispositif (il n'y en a qu'un, relation 1:1)."""
+        cls.objects.filter(vehicle=vehicle).update(vehicle=None)
+
+    @classmethod
+    def detach_device(cls, device_id, agency=None):
+        """Délie le dispositif du véhicule auquel il est éventuellement affecté."""
+        qs = cls.objects.filter(traccar_device_id=device_id)
+        if agency is not None:
+            qs = qs.filter(agency=agency)
+        qs.update(vehicle=None)
 
 
 class Evaluation(models.Model):

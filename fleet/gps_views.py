@@ -11,7 +11,7 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Vehicle
+from .models import Vehicle, GpsDevice
 from .serializers import VehicleSerializer
 from .traccar import (
     TraccarError,
@@ -30,7 +30,7 @@ from .traccar import (
 
 
 def _scoped_vehicles(request):
-    base = Vehicle.objects.select_related('marque', 'modele', 'agency')
+    base = Vehicle.objects.select_related('marque', 'modele', 'agency', 'gps_device')
     if request.user.is_superuser:
         return base
     return base.filter(agency=request.user.agency)
@@ -39,8 +39,8 @@ def _scoped_vehicles(request):
 def _resolve_device_id(vehicle, devices_by_name):
     """Trouve l'ID du dispositif Traccar du véhicule.
 
-    Priorité : traccar_device_id explicite, sinon correspondance par
-    matricule (name ou uniqueId du dispositif).
+    Priorité : traccar_device_id explicite (relation GpsDevice), sinon
+    correspondance par matricule (name ou uniqueId du dispositif).
     """
     if vehicle.traccar_device_id:
         return vehicle.traccar_device_id
@@ -50,6 +50,50 @@ def _resolve_device_id(vehicle, devices_by_name):
             if key in (str(dev.get('name', '')).strip().lower(), str(dev.get('uniqueId', '')).strip().lower()):
                 return dev_id
     return None
+
+
+def _mirror_devices(agency):
+    """Enregistre/met à jour les dispositifs Traccar du compte agence dans GpsDevice.
+
+    Le serveur Traccar reste la source de vérité ; cette table est un miroir
+    (nom, IMEI, statut) qui permet de retrouver les dispositifs ajoutés au
+    serveur et conserve le lien 1:1 dispositif ↔ véhicule.
+    """
+    if agency is None:
+        return
+    try:
+        devices = get_devices(agency=agency)
+    except (TraccarError, TraccarNotConfigured):
+        return
+    for dev in devices:
+        device_id = dev.get('id')
+        if not device_id:
+            continue
+        name = (dev.get('name') or '').strip()
+        unique_id = (dev.get('uniqueId') or '').strip()
+        status = dev.get('status') if dev.get('status') in ('online', 'offline') else ''
+        last_update = dev.get('lastUpdate')
+        if last_update:
+            try:
+                last_update = datetime.fromisoformat(last_update.replace('Z', '+00:00'))
+            except (TypeError, ValueError):
+                last_update = None
+        obj, _ = GpsDevice.objects.get_or_create(
+            agency=agency,
+            traccar_device_id=device_id,
+            defaults={'name': name, 'unique_id': unique_id, 'status': status},
+        )
+        updates = {}
+        if (obj.name or '') != name:
+            updates['name'] = name
+        if (obj.unique_id or '') != unique_id:
+            updates['unique_id'] = unique_id
+        if (obj.status or '') != status:
+            updates['status'] = status
+        if last_update is not None and obj.last_update != last_update:
+            updates['last_update'] = last_update
+        if updates:
+            GpsDevice.objects.filter(pk=obj.pk).update(**updates)
 
 
 def _device_index(agency=None):
@@ -144,18 +188,24 @@ class GpsDevicesView(APIView):
     def _devices_with_vehicles(self, request):
         """Dispositifs Traccar enrichis du véhicule auquel chacun est associé."""
         devices = get_devices(agency=request.user.agency)
-        linked = _scoped_vehicles(request).filter(traccar_device_id__isnull=False)
-        by_device = {v.traccar_device_id: v for v in linked}
+        linked = {
+            g.traccar_device_id: g
+            for g in GpsDevice.objects.filter(
+                vehicle__in=_scoped_vehicles(request)
+            ).select_related('vehicle')
+        }
         return [
             {
                 **d,
-                "vehicle_id": by_device.get(d.get("id")).id if by_device.get(d.get("id")) else None,
-                "vehicle_matricule": by_device.get(d.get("id")).matricule if by_device.get(d.get("id")) else None,
+                "vehicle_id": linked.get(d.get("id")).vehicle_id if linked.get(d.get("id")) else None,
+                "vehicle_matricule": linked.get(d.get("id")).vehicle.matricule if linked.get(d.get("id")) else None,
             }
             for d in devices
         ]
 
     def get(self, request):
+        if request.user.agency:
+            _mirror_devices(request.user.agency)
         try:
             devices = self._devices_with_vehicles(request)
         except TraccarNotConfigured:
@@ -227,7 +277,11 @@ class GpsDevicesView(APIView):
         except TraccarError as exc:
             return Response({"detail": str(exc)}, status=502)
 
-        _scoped_vehicles(request).filter(traccar_device_id=device_id).update(traccar_device_id=None)
+        # Le dispositif est supprimé du serveur : on supprime aussi son miroir local
+        # (le véhicule éventuellement lié est automatiquement délié, relation 1:1).
+        GpsDevice.objects.filter(
+            traccar_device_id=device_id, vehicle__in=_scoped_vehicles(request)
+        ).delete()
         return Response({"status": "deleted", "device_id": device_id})
 
 
@@ -243,8 +297,10 @@ class GpsDeviceAssociateView(APIView):
 
     def post(self, request):
         data = request.data or {}
+        agency = request.user.agency
         if str(data.get('dissociate_all', '')).lower() in ('true', '1', 'yes', 'on'):
-            count = _scoped_vehicles(request).filter(traccar_device_id__isnull=False).update(traccar_device_id=None)
+            vehicles = _scoped_vehicles(request)
+            count = GpsDevice.objects.filter(vehicle__in=vehicles).update(vehicle=None)
             return Response({"status": "dissociated_all", "vehicles": count})
         try:
             device_id = int(data.get('device_id'))
@@ -265,7 +321,7 @@ class GpsDeviceAssociateView(APIView):
         # Le dispositif doit exister sur le serveur Traccar du compte de l'agence.
         try:
             device = next(
-                (d for d in get_devices(agency=request.user.agency) if d.get('id') == device_id),
+                (d for d in get_devices(agency=agency) if d.get('id') == device_id),
                 None,
             )
         except TraccarNotConfigured:
@@ -276,19 +332,25 @@ class GpsDeviceAssociateView(APIView):
             return Response({"detail": "Dispositif introuvable sur le serveur Traccar."}, status=404)
 
         # Un dispositif ne peut être lié qu'à un seul véhicule : on le délie des autres.
-        qs = _scoped_vehicles(request).filter(traccar_device_id=device_id)
         if vehicle:
-            qs = qs.exclude(pk=vehicle.pk)
-        qs.update(traccar_device_id=None)
-
-        if vehicle:
-            vehicle.traccar_device_id = device_id
+            agency = agency or vehicle.agency
+            GpsDevice.detach_device(device_id, agency)
+            GpsDevice.attach(
+                vehicle,
+                device_id,
+                agency,
+                name=(device.get('name') or '').strip(),
+                unique_id=(device.get('uniqueId') or '').strip(),
+            )
             imei = (device.get('uniqueId') or '').strip()
             if imei:
                 vehicle.gps_imei = imei
-            vehicle.save(update_fields=['traccar_device_id', 'gps_imei'])
+                vehicle.save(update_fields=['gps_imei'])
             return Response({"status": "associated", "device_id": device_id, "vehicle_id": vehicle.id})
 
+        GpsDevice.objects.filter(
+            traccar_device_id=device_id, vehicle__in=_scoped_vehicles(request)
+        ).update(vehicle=None)
         return Response({"status": "dissociated", "device_id": device_id})
 
 
@@ -362,7 +424,7 @@ class GpsSetOdometerView(APIView):
                 return Response({"detail": "Ce véhicule n'a pas de dispositif Traccar associé."}, status=400)
         elif device_id:
             device_id = int(device_id)
-            vehicle = _scoped_vehicles(request).filter(traccar_device_id=device_id).first()
+            vehicle = _scoped_vehicles(request).filter(gps_device__traccar_device_id=device_id).first()
             if not vehicle:
                 return Response(
                     {"detail": "Ce dispositif Traccar n'est lié à aucun véhicule de votre agence."},

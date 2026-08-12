@@ -6,7 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import F, Q, Sum
 from datetime import datetime
 
-from .models import Vehicle, Brand, ModelCar, Evaluation
+from .models import Vehicle, Brand, ModelCar, Evaluation, GpsDevice
 from .serializers import VehicleSerializer, BrandSerializer, ModelCarSerializer, EvaluationSerializer
 from .traccar import TraccarError, TraccarNotConfigured, create_device, get_devices, update_device
 from contracts.models import Contract, Reservation
@@ -26,26 +26,17 @@ def _annotate_km_loue(qs):
     )
 
 
-def _unlink_traccar_device(vehicle):
-    """Un dispositif Traccar ne peut être lié qu'à un seul véhicule :
-    s'il est déjà affecté à un autre véhicule, on le délie de ce dernier."""
-    device_id = vehicle.traccar_device_id
-    if not device_id:
-        return
-    Vehicle.objects.filter(traccar_device_id=device_id).exclude(pk=vehicle.pk).update(traccar_device_id=None)
-
-
 def _sync_traccar_device(vehicle, agency):
     """Enregistre le périphérique GPS (IMEI) du véhicule sur le serveur Traccar.
 
-    Si le véhicule a un IMEI mais aucun ID Traccar, on crée le dispositif sur
-    le serveur et on stocke l'ID retourné dans traccar_device_id pour les
-    appels API (positions, historique). Si Traccar n'est pas configuré pour
-    l'agence, on ne bloque pas la sauvegarde : l'IMEI est conservé pour une
-    synchronisation ultérieure.
+    Si le véhicule a un IMEI mais aucun dispositif lié, on crée le dispositif sur
+    le serveur et on enregistre le lien dans la table GpsDevice pour les appels
+    API (positions, historique). Si Traccar n'est pas configuré pour l'agence, on
+    ne bloque pas la sauvegarde : l'IMEI est conservé pour une synchronisation
+    ultérieure.
     """
     imei = (vehicle.gps_imei or '').strip()
-    if not imei or vehicle.traccar_device_id:
+    if not imei or vehicle.gps_device_id:
         return
 
     name = vehicle.matricule or f'Véhicule {imei}'
@@ -64,8 +55,7 @@ def _sync_traccar_device(vehicle, agency):
 
     device_id = device.get('id')
     if device_id:
-        vehicle.traccar_device_id = device_id
-        vehicle.save(update_fields=['traccar_device_id'])
+        GpsDevice.attach(vehicle, device_id, agency, name=name, unique_id=imei)
 
 
 class VehicleViewSet(viewsets.ModelViewSet):
@@ -78,7 +68,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
     ordering_fields = ['prix_par_jour', 'kilometrage', 'annee', 'id']
 
     def get_queryset(self):
-        base = _annotate_km_loue(Vehicle.objects.select_related('marque', 'modele', 'agency'))
+        base = _annotate_km_loue(Vehicle.objects.select_related('marque', 'modele', 'agency', 'gps_device'))
         if self.request.user.is_superuser:
             qs = base
         else:
@@ -98,7 +88,6 @@ class VehicleViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": "Votre compte n'est lié à aucune agence. Veuillez contacter l'administrateur."})
         vehicle = serializer.save(agency=agency)
         _sync_traccar_device(vehicle, agency)
-        _unlink_traccar_device(vehicle)
 
     def perform_update(self, serializer):
         old_imei = (serializer.instance.gps_imei or '').strip() if serializer.instance else None
@@ -117,7 +106,6 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 )
             except (TraccarError, TraccarNotConfigured):
                 pass
-        _unlink_traccar_device(vehicle)
 
     def destroy(self, request, *args, **kwargs):
         """Suppression douce : le véhicule n'est pas supprimé de la base,

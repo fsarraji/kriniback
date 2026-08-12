@@ -49,13 +49,13 @@ class Command(BaseCommand):
     def _resolve(self, ref, device_id_mode, agency_id):
         if device_id_mode:
             device_id = int(ref)
-            vehicle = Vehicle.objects.filter(traccar_device_id=device_id).first()
+            vehicle = Vehicle.objects.select_related('gps_device').filter(gps_device__traccar_device_id=device_id).first()
             return device_id, vehicle
         vehicle = None
         if ref.isdigit():
-            vehicle = Vehicle.objects.select_related('agency').filter(pk=int(ref)).first()
+            vehicle = Vehicle.objects.select_related('agency', 'gps_device').filter(pk=int(ref)).first()
         if vehicle is None:
-            vehicle = Vehicle.objects.select_related('agency').filter(matricule=ref).first()
+            vehicle = Vehicle.objects.select_related('agency', 'gps_device').filter(matricule=ref).first()
         if vehicle is None:
             raise CommandError(
                 f"Aucun véhicule Krini trouvé pour « {ref} » (id ou matricule). "
@@ -64,7 +64,7 @@ class Command(BaseCommand):
         if not vehicle.traccar_device_id:
             raise CommandError(
                 f"Le véhicule {vehicle.matricule} (id={vehicle.id}) n'a pas de dispositif "
-                "Traccar associé (traccar_device_id vide)."
+                "Traccar associé."
             )
         return vehicle.traccar_device_id, vehicle
 

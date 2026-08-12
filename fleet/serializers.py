@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Vehicle, Brand, ModelCar, Evaluation
+from .models import Vehicle, Brand, ModelCar, Evaluation, GpsDevice
 from agency.models import Agency
 
 class SimpleAgencySerializer(serializers.ModelSerializer):
@@ -17,6 +17,25 @@ class ModelCarSerializer(serializers.ModelSerializer):
         model = ModelCar
         fields = '__all__'
 
+class GpsDeviceSerializer(serializers.ModelSerializer):
+    vehicle_id = serializers.SerializerMethodField()
+    vehicle_matricule = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GpsDevice
+        fields = [
+            'id', 'agency', 'vehicle', 'vehicle_id', 'vehicle_matricule',
+            'traccar_device_id', 'name', 'unique_id', 'status', 'last_update',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_vehicle_id(self, obj):
+        return obj.vehicle_id
+
+    def get_vehicle_matricule(self, obj):
+        return obj.vehicle.matricule if obj.vehicle_id else None
+
 class VehicleSerializer(serializers.ModelSerializer):
     marque_name = serializers.CharField(source='marque.name', read_only=True)
     modele_name = serializers.CharField(source='modele.name', read_only=True)
@@ -24,11 +43,13 @@ class VehicleSerializer(serializers.ModelSerializer):
     rating_avg = serializers.SerializerMethodField()
     rating_count = serializers.SerializerMethodField()
     km_loue = serializers.SerializerMethodField()
+    traccar_device_id = serializers.IntegerField(required=False, allow_null=True)
+    gps_device = GpsDeviceSerializer(read_only=True)
 
     class Meta:
         model = Vehicle
         fields = '__all__'
-        read_only_fields = ['agency']
+        read_only_fields = ['agency', 'gps_device']
 
     def get_rating_avg(self, obj):
         evals = obj.evaluations.all()
@@ -45,6 +66,33 @@ class VehicleSerializer(serializers.ModelSerializer):
         if getattr(obj, 'km_loue', None) is not None:
             return obj.km_loue
         return obj.km_loue_total
+
+    def _apply_gps_link(self, vehicle, device_id, provided):
+        """Applique l'association demandée via le champ traccar_device_id (si fourni).
+
+        Un ID → lie le dispositif au véhicule (délie tout autre véhicule). Null →
+        dissocie. Champ absent → aucune modification.
+        """
+        if not provided:
+            return
+        if device_id:
+            GpsDevice.attach(vehicle, int(device_id), vehicle.agency)
+        else:
+            GpsDevice.detach(vehicle)
+
+    def create(self, validated_data):
+        provided = 'traccar_device_id' in validated_data
+        device_id = validated_data.pop('traccar_device_id', None)
+        vehicle = super().create(validated_data)
+        self._apply_gps_link(vehicle, device_id, provided)
+        return vehicle
+
+    def update(self, instance, validated_data):
+        provided = 'traccar_device_id' in validated_data
+        device_id = validated_data.pop('traccar_device_id', None)
+        vehicle = super().update(instance, validated_data)
+        self._apply_gps_link(vehicle, device_id, provided)
+        return vehicle
 
 class EvaluationSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
