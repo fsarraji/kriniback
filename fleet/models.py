@@ -77,6 +77,18 @@ class Vehicle(models.Model):
         ).aggregate(total=Sum(F('km_retour') - F('km_sortie')))
         return result.get('total') or 0
 
+    def save(self, *args, **kwargs):
+        # Normalise le statut (insensible à la casse / aux espaces) vers les
+        # valeurs canoniques. Évite les valeurs erronées ('AVAILABLE',
+        # 'available'...) qui cassent les filtres et les boutons des fronts.
+        s = (self.statut or '').strip()
+        for choice, _ in self.STATUS_CHOICES:
+            if s and s.lower() == choice.lower():
+                if self.statut != choice:
+                    self.statut = choice
+                break
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.marque} {self.modele} - {self.matricule}"
 

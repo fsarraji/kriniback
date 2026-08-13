@@ -5,6 +5,24 @@ from clients.models import Client
 from django.utils import timezone
 from car_rental_backend.uploads import pdf_job_upload_to
 
+
+def _release_vehicle(vehicle, exclude_contract=None):
+    """Remet un véhicule en 'Available' à l'annulation/terminaison d'un contrat
+    ou d'une réservation.
+
+    Ne libère pas le véhicule s'il reste une location en cours (EN_COURS) :
+    il est alors réellement loué par un autre contrat. `exclude_contract` exclut
+    le contrat en cours de modification (non encore commité au moment de l'appel).
+    """
+    active_rental = Contract.objects.filter(vehicle=vehicle, statut='EN_COURS')
+    if exclude_contract is not None and exclude_contract.pk is not None:
+        active_rental = active_rental.exclude(pk=exclude_contract.pk)
+    if active_rental.exists():
+        return
+    if vehicle.statut != 'Available':
+        vehicle.statut = 'Available'
+        vehicle.save(update_fields=['statut'])
+
 class Contract(models.Model):
     # حالات العقد
     STATUS_CHOICES =[
@@ -102,8 +120,7 @@ class Contract(models.Model):
             self.vehicle.save()
             
         elif self.statut == 'ANNULE':
-            self.vehicle.statut = 'Available'
-            self.vehicle.save()
+            _release_vehicle(self.vehicle, exclude_contract=self)
 
         super(Contract, self).save(*args, **kwargs)
 
@@ -166,6 +183,12 @@ class Reservation(models.Model):
     statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Statut")
     notes = models.TextField(null=True, blank=True, verbose_name="Notes")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        result = super().save(*args, **kwargs)
+        if self.statut == 'CANCELLED':
+            _release_vehicle(self.vehicle)
+        return result
 
     class Meta:
         ordering = ['-created_at']

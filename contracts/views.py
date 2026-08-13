@@ -19,7 +19,7 @@ import qrcode
 import barcode
 from barcode.writer import ImageWriter
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
+from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation, _release_vehicle
 from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSerializer, ReservationSerializer
 
 
@@ -417,11 +417,11 @@ class ContractViewSet(viewsets.ModelViewSet):
         contract.statut = 'TERMINE'
         contract.save()
 
-        # ✅ Remettre le véhicule en disponible
+        # ✅ Remettre le véhicule en disponible (si aucune autre location en cours)
         vehicle = contract.vehicle
-        vehicle.statut = 'Available'
         vehicle.kilometrage = km_retour_int  # Mettre à jour le kilométrage du véhicule
-        vehicle.save()
+        vehicle.save(update_fields=['kilometrage'])
+        _release_vehicle(vehicle)
 
         return Response({
             'detail': 'تم إغلاق العقد وإرجاع السيارة بنجاح.',
@@ -617,13 +617,15 @@ class ReservationViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
+        reservation = self.get_object()
         if request.user.role == 'CLIENT':
-            reservation = self.get_object()
             if reservation.client != getattr(request.user, 'client_profile', None):
                 return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
             if reservation.statut != 'PENDING':
                 return Response({'detail': 'Vous ne pouvez supprimer qu\'une réservation en attente.'}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+        response = super().destroy(request, *args, **kwargs)
+        _release_vehicle(reservation.vehicle)
+        return response
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
