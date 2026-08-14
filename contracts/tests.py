@@ -58,6 +58,9 @@ class Contract(models.Model):
     statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='EN_COURS', verbose_name="حالة العقد")
     date_creation = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        app_label = 'contracts_tests'
+
     def save(self, *args, **kwargs):
         # 1. حساب المبلغ الإجمالي والمتبقي تلقائياً قبل حفظ العقد
         if self.prix_par_jour and self.jours:

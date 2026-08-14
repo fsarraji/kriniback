@@ -144,6 +144,30 @@ class VehicleViewSet(viewsets.ModelViewSet):
         obj.save(update_fields=['is_deleted'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=['get'], url_path='price-quote')
+    def price_quote(self, request, pk=None):
+        """Devis du tarif de location pour une période : somme des prix
+        journaliers (saisons). start / end au format YYYY-MM-DD ou ISO."""
+        vehicle = self.get_object()
+        start_str = request.query_params.get('start')
+        end_str = request.query_params.get('end')
+        if not start_str or not end_str:
+            return Response({"detail": "Veuillez préciser start et end (ex: 2026-07-01)."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            start = datetime.fromisoformat(start_str)
+            end = datetime.fromisoformat(end_str)
+        except ValueError:
+            return Response({"detail": "Format de date invalide, utilisez YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        quote = vehicle.prix_pour_periode(start, end)
+        return Response({
+            'vehicle': vehicle.pk,
+            'matricule_actuel': vehicle.matricule_actuel,
+            'jours': quote['jours'],
+            'prix_moyen': str(quote['prix_moyen']),
+            'total': str(quote['total']),
+            'detail': quote['detail'],
+        })
+
     @action(detail=False, methods=['get'])
     def available_cars(self, request):
         start_date_str = request.query_params.get('start_date')
@@ -182,7 +206,7 @@ class VehicleCheckUniqueView(APIView):
     lors de l'édition."""
     permission_classes = [permissions.IsAuthenticated]
 
-    ALLOWED_FIELDS = {'matricule'}
+    ALLOWED_FIELDS = {'matricule', 'matricule_definitif'}
 
     def get(self, request):
         field = request.query_params.get('field', '')
@@ -357,3 +381,27 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
 
         ranges.sort(key=lambda r: r['start'])
         return Response({'unavailable': ranges})
+
+    @action(detail=True, methods=['get'], url_path='price-quote')
+    def price_quote(self, request, pk=None):
+        """Devis public du tarif de location pour une période (somme des prix
+        journaliers saisonniers). Accessible sans authentification."""
+        vehicle = self.get_object()
+        start_str = request.query_params.get('start')
+        end_str = request.query_params.get('end')
+        if not start_str or not end_str:
+            return Response({"detail": "Veuillez préciser start et end (ex: 2026-07-01)."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            start = datetime.fromisoformat(start_str)
+            end = datetime.fromisoformat(end_str)
+        except ValueError:
+            return Response({"detail": "Format de date invalide, utilisez YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        quote = vehicle.prix_pour_periode(start, end)
+        return Response({
+            'vehicle': vehicle.pk,
+            'matricule_actuel': vehicle.matricule_actuel,
+            'jours': quote['jours'],
+            'prix_moyen': str(quote['prix_moyen']),
+            'total': str(quote['total']),
+            'detail': quote['detail'],
+        })

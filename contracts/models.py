@@ -3,6 +3,8 @@ from agency.models import Agency, CustomUser
 from fleet.models import Vehicle
 from clients.models import Client
 from django.utils import timezone
+from decimal import Decimal, ROUND_HALF_UP
+from datetime import timedelta
 from car_rental_backend.uploads import pdf_job_upload_to
 
 
@@ -103,10 +105,25 @@ class Contract(models.Model):
     date_creation = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # 1. حساب المبلغ الإجمالي والمتبقي تلقائياً قبل حفظ العقد
-        if self.prix_par_jour and self.jours:
+        # 1. Calcul automatique du montant total et du reste à payer.
+        #    Si le véhicule et les dates sont connus, le tarif tient compte des
+        #    périodes saisonnières (somme des prix journaliers). Un prix saisi
+        #    manuellement par l'agence (différent du prix défaut et du prix
+        #    moyen saisonnier) prime : montant = prix * jours.
+        if self.vehicle_id and self.date_sortie and self.jours:
+            end = self.date_sortie + timedelta(days=self.jours - 1)
+            quote = self.vehicle.prix_pour_periode(self.date_sortie, end)
+            moyen = quote['prix_moyen'].quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            is_default = self.prix_par_jour == self.vehicle.prix_par_jour
+            is_saisonnier = self.prix_par_jour == moyen
+            if is_default or is_saisonnier:
+                self.montant_total = quote['total']
+                self.prix_par_jour = moyen
+            else:
+                self.montant_total = self.prix_par_jour * self.jours
+        elif self.prix_par_jour and self.jours:
             self.montant_total = self.prix_par_jour * self.jours
-            self.reste_a_payer = self.montant_total - self.montant_paye
+        self.reste_a_payer = self.montant_total - self.montant_paye
             
         # 2. تحديث الكيلومتراج الخاص بالسيارة إذا تم إرجاعها
         if self.statut == 'TERMINE' and self.km_retour:

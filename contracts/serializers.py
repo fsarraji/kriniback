@@ -106,7 +106,8 @@ class ReservationSerializer(serializers.ModelSerializer):
 
         validated_data['client'] = client
         validated_data['agency'] = vehicle.agency
-        validated_data['prix_par_jour'] = vehicle.prix_par_jour
+        quote = vehicle.prix_pour_periode(validated_data['date_sortie'], validated_data['date_retour_prevue'])
+        validated_data['prix_par_jour'] = quote['prix_moyen']
         return super().create(validated_data)
 
 class ContractDamageSerializer(serializers.ModelSerializer):
@@ -127,7 +128,7 @@ class ContractSerializer(serializers.ModelSerializer):
     client_prenom = serializers.CharField(source='client.prenom', read_only=True)
     client_initials = serializers.SerializerMethodField()
     vehicle_name = serializers.SerializerMethodField()
-    vehicle_matricule = serializers.CharField(source='vehicle.matricule', read_only=True)
+    vehicle_matricule = serializers.SerializerMethodField()
     vehicle_tarif_km_extra = serializers.DecimalField(source='vehicle.tarif_km_extra', max_digits=6, decimal_places=2, read_only=True, allow_null=True)
     formatted_dates = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
@@ -217,6 +218,9 @@ class ContractSerializer(serializers.ModelSerializer):
 
     def get_vehicle_name(self, obj):
         return f"{obj.vehicle.marque} {obj.vehicle.modele}"
+
+    def get_vehicle_matricule(self, obj):
+        return obj.vehicle.matricule_actuel
 
     def get_formatted_dates(self, obj):
         return {
