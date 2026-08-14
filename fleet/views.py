@@ -279,7 +279,16 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['prix_par_jour', 'annee']
 
     def get_queryset(self):
-        qs = Vehicle.objects.filter(is_archived=False, is_deleted=False)
+        qs = Vehicle.objects.filter(
+            is_archived=False,
+            is_deleted=False,
+            agency__is_active=True,
+        )
+
+        # ?all=1 -> retourne toute la flotte (louée, disponible, en maintenance)
+        # avec son statut, pour la page catalogue « Nos véhicules ».
+        if self.request.query_params.get('all') == '1':
+            return _annotate_km_loue(qs)
 
         start_str = self.request.query_params.get('date_sortie')
         end_str = self.request.query_params.get('date_retour')
