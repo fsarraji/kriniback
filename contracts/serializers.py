@@ -1,6 +1,25 @@
 from rest_framework import serializers
 from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
 from django.db.models import Q
+from django.utils import timezone
+
+
+def _make_aware(dt):
+    """Rend un datetime timezone-aware (fuseau courant) sans décaler l'heure.
+
+    Les formulaires web agence envoient des datetimes locaux naïfs
+    (datetime-local) ; Django lève un RuntimeWarning à l'enregistrement.
+    """
+    if dt is not None and timezone.is_naive(dt):
+        return timezone.make_aware(dt)
+    return dt
+
+
+def _normalize_dates(data):
+    for key in ('date_sortie', 'date_retour_prevue'):
+        if key in data:
+            data[key] = _make_aware(data[key])
+    return data
 
 
 class BookingRequestSerializer(serializers.ModelSerializer):
@@ -21,6 +40,7 @@ class BookingRequestSerializer(serializers.ModelSerializer):
         if not vehicle:
             raise serializers.ValidationError({'vehicle': 'Le véhicule est requis.'})
 
+        _normalize_dates(data)
         date_sortie = data.get('date_sortie')
         date_retour_prevue = data.get('date_retour_prevue')
         if date_sortie and date_retour_prevue and date_retour_prevue <= date_sortie:
@@ -61,6 +81,8 @@ class ReservationSerializer(serializers.ModelSerializer):
     def validate(self, data):
         instance = self.instance
         vehicle = data.get('vehicle') or (instance.vehicle if instance else None)
+
+        _normalize_dates(data)
         date_sortie = data.get('date_sortie')
         date_retour_prevue = data.get('date_retour_prevue')
 
@@ -186,11 +208,12 @@ class ContractSerializer(serializers.ModelSerializer):
         # If updating, use existing data if not provided
         if self.instance and not vehicle:
             vehicle = self.instance.vehicle
-            
+
+        _normalize_dates(data)
         date_sortie = data.get('date_sortie')
         if self.instance and not date_sortie:
             date_sortie = self.instance.date_sortie
-            
+
         date_retour_prevue = data.get('date_retour_prevue')
         if self.instance and not date_retour_prevue:
             date_retour_prevue = self.instance.date_retour_prevue
