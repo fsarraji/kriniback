@@ -66,7 +66,7 @@ class PublicAgencyViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Vue publique (sans authentification) des agences pour le site de réservation.
     """
-    queryset = Agency.objects.filter(is_active=True, vehicles__statut='Available').distinct()
+    queryset = Agency.objects.filter(is_active=True).distinct()
     serializer_class = PublicAgencySerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = None
