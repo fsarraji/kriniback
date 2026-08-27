@@ -168,6 +168,39 @@ class VehicleViewSet(viewsets.ModelViewSet):
             'detail': quote['detail'],
         })
 
+    @action(detail=True, methods=['get'], url_path='unavailable-dates')
+    def unavailable_dates(self, request, pk=None):
+        """Plages de dates/heures où le véhicule est indisponible (contrats en
+        cours + réservations actives). Utilisé par les datepickers de l'app
+        mobile pour désactiver les créneaux non disponibles à la location."""
+        vehicle = self.get_object()
+        ranges = []
+
+        for c in Contract.objects.filter(
+            vehicle=vehicle,
+            statut__in=['RESERVE', 'EN_COURS'],
+        ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
+            ranges.append({
+                'start': c.date_sortie.isoformat(),
+                'end': c.date_retour_prevue.isoformat(),
+                'type': 'contract',
+                'id': c.id,
+            })
+
+        for r in Reservation.objects.filter(
+            vehicle=vehicle,
+            statut__in=['PENDING', 'CONFIRMED'],
+        ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
+            ranges.append({
+                'start': r.date_sortie.isoformat(),
+                'end': r.date_retour_prevue.isoformat(),
+                'type': 'reservation',
+                'id': r.id,
+            })
+
+        ranges.sort(key=lambda r: r['start'])
+        return Response({'unavailable': ranges})
+
     @action(detail=False, methods=['get'])
     def available_cars(self, request):
         start_date_str = request.query_params.get('start_date')
