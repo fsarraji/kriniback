@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
 from django.db.models import Q
 from django.utils import timezone
+from .availability import agency_buffer
 
 
 def _make_aware(dt):
@@ -91,13 +92,16 @@ class ReservationSerializer(serializers.ModelSerializer):
         if date_sortie and date_retour_prevue and date_retour_prevue <= date_sortie:
             raise serializers.ValidationError("La date de retour doit être postérieure à la date de sortie.")
 
-        # Vérifier les chevauchements : contrats actifs/réservés + réservations en attente/confirmées
+        # Vérifier les chevauchements : contrats actifs/réservés + réservations en attente/confirmées,
+        # en appliquant le délai de confort de l'agence (la voiture est indisponible
+        # quelques heures avant/après chaque location).
         if date_sortie and date_retour_prevue:
+            buffer = agency_buffer(vehicle.agency)
             overlapping_contracts = Contract.objects.filter(
                 vehicle=vehicle,
                 statut__in=['RESERVE', 'EN_COURS'],
-                date_sortie__lt=date_retour_prevue,
-                date_retour_prevue__gt=date_sortie,
+                date_sortie__lt=date_retour_prevue + buffer,
+                date_retour_prevue__gt=date_sortie - buffer,
             ).exists()
             if overlapping_contracts:
                 raise serializers.ValidationError("Ce véhicule est déjà réservé ou loué pour cette période.")
@@ -105,8 +109,8 @@ class ReservationSerializer(serializers.ModelSerializer):
             overlapping_reservations = Reservation.objects.filter(
                 vehicle=vehicle,
                 statut__in=['PENDING', 'CONFIRMED'],
-                date_sortie__lt=date_retour_prevue,
-                date_retour_prevue__gt=date_sortie,
+                date_sortie__lt=date_retour_prevue + buffer,
+                date_retour_prevue__gt=date_sortie - buffer,
             )
             if instance:
                 overlapping_reservations = overlapping_reservations.exclude(pk=instance.pk)
@@ -219,18 +223,31 @@ class ContractSerializer(serializers.ModelSerializer):
             date_retour_prevue = self.instance.date_retour_prevue
 
         if vehicle and date_sortie and date_retour_prevue:
-            # Check for overlapping contracts (EN_COURS or RESERVE)
+            buffer = agency_buffer(vehicle.agency)
+            # Check for overlapping contracts (EN_COURS or RESERVE), en appliquant
+            # le délai de confort de l'agence (indisponibilité quelques heures
+            # avant/après chaque location).
             overlapping = Contract.objects.filter(
                 vehicle=vehicle,
                 statut__in=['EN_COURS', 'RESERVE'],
-                date_sortie__lt=date_retour_prevue,
-                date_retour_prevue__gt=date_sortie
+                date_sortie__lt=date_retour_prevue + buffer,
+                date_retour_prevue__gt=date_sortie - buffer
             )
             if self.instance:
                 overlapping = overlapping.exclude(pk=self.instance.pk)
-                
+
             if overlapping.exists():
                 raise serializers.ValidationError("Ce véhicule est déjà loué ou réservé pour la période sélectionnée.")
+
+            # Une réservation active (en attente/confirmée) occupe elle aussi le véhicule.
+            overlapping_res = Reservation.objects.filter(
+                vehicle=vehicle,
+                statut__in=['PENDING', 'CONFIRMED'],
+                date_sortie__lt=date_retour_prevue + buffer,
+                date_retour_prevue__gt=date_sortie - buffer
+            )
+            if overlapping_res.exists():
+                raise serializers.ValidationError("Ce véhicule a déjà une réservation en cours pour la période sélectionnée.")
 
         return data
 

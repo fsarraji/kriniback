@@ -17,6 +17,7 @@ from .traccar import (
     update_device_accumulators,
 )
 from contracts.models import Contract, Reservation
+from contracts.availability import agency_buffer, max_buffer
 
 
 def _annotate_km_loue(qs):
@@ -171,8 +172,9 @@ class VehicleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='unavailable-dates')
     def unavailable_dates(self, request, pk=None):
         """Plages de dates/heures où le véhicule est indisponible (contrats en
-        cours + réservations actives). Utilisé par les datepickers de l'app
-        mobile pour désactiver les créneaux non disponibles à la location."""
+        cours + réservations actives), étendues du délai de confort. Utilisé par
+        les datepickers de l'app mobile pour désactiver les créneaux non
+        disponibles à la location."""
         vehicle = self.get_object()
         ranges = []
 
@@ -181,8 +183,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
             statut__in=['RESERVE', 'EN_COURS'],
         ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
             ranges.append({
-                'start': c.date_sortie.isoformat(),
-                'end': c.date_retour_prevue.isoformat(),
+                'start': (c.date_sortie - agency_buffer(vehicle.agency)).isoformat(),
+                'end': (c.date_retour_prevue + agency_buffer(vehicle.agency)).isoformat(),
                 'type': 'contract',
                 'id': c.id,
             })
@@ -192,8 +194,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
             statut__in=['PENDING', 'CONFIRMED'],
         ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
             ranges.append({
-                'start': r.date_sortie.isoformat(),
-                'end': r.date_retour_prevue.isoformat(),
+                'start': (r.date_sortie - agency_buffer(vehicle.agency)).isoformat(),
+                'end': (r.date_retour_prevue + agency_buffer(vehicle.agency)).isoformat(),
                 'type': 'reservation',
                 'id': r.id,
             })
@@ -216,16 +218,30 @@ class VehicleViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Format de date invalide, utilisez : YYYY-MM-DDTHH:MM"}, status=status.HTTP_400_BAD_REQUEST)
 
         agency = request.user.agency
+        buffer = agency_buffer(agency)
         contract_filters = {
             'statut__in': ['RESERVE', 'EN_COURS'],
-            'date_sortie__lt': end_date,
-            'date_retour_prevue__gt': start_date
+            'date_sortie__lt': end_date + buffer,
+            'date_retour_prevue__gt': start_date - buffer
         }
         if not request.user.is_superuser:
             contract_filters['agency'] = agency
-            
+
         overlapping_contracts = Contract.objects.filter(**contract_filters)
-        reserved_vehicle_ids = overlapping_contracts.values_list('vehicle_id', flat=True)
+        reserved_vehicle_ids = set(overlapping_contracts.values_list('vehicle_id', flat=True))
+
+        # Les réservations actives (en attente/confirmées) occupent aussi le véhicule,
+        # avec le même délai de confort.
+        reservation_filters = {
+            'statut__in': ['PENDING', 'CONFIRMED'],
+            'date_sortie__lt': end_date + buffer,
+            'date_retour_prevue__gt': start_date - buffer
+        }
+        if not request.user.is_superuser:
+            reservation_filters['agency'] = agency
+        overlapping_reservations = Reservation.objects.filter(**reservation_filters)
+        reserved_vehicle_ids |= set(overlapping_reservations.values_list('vehicle_id', flat=True))
+
         vehicle_queryset = Vehicle.objects.all() if request.user.is_superuser else Vehicle.objects.filter(agency=agency)
         vehicle_queryset = _annotate_km_loue(vehicle_queryset)
         available_vehicles = vehicle_queryset.exclude(id__in=reserved_vehicle_ids).filter(is_archived=False, is_deleted=False)
@@ -360,16 +376,18 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
             if start_date and end_date:
                 # Disponibilité dans l'intervalle demandé : on exclut les véhicules
                 # ayant un contrat (RESERVE/EN_COURS) ou une réservation active
-                # (PENDING/CONFIRMED) qui chevauche [date_sortie, date_retour].
+                # (PENDING/CONFIRMED) qui chevauche [date_sortie, date_retour], en
+                # appliquant le délai de confort maximal des agences.
+                buffer = max_buffer()
                 busy_ids = Contract.objects.filter(
                     statut__in=['RESERVE', 'EN_COURS'],
-                    date_sortie__lt=end_date,
-                    date_retour_prevue__gt=start_date,
+                    date_sortie__lt=end_date + buffer,
+                    date_retour_prevue__gt=start_date - buffer,
                 ).values_list('vehicle_id', flat=True).union(
                     Reservation.objects.filter(
                         statut__in=['PENDING', 'CONFIRMED'],
-                        date_sortie__lt=end_date,
-                        date_retour_prevue__gt=start_date,
+                        date_sortie__lt=end_date + buffer,
+                        date_retour_prevue__gt=start_date - buffer,
                     ).values_list('vehicle_id', flat=True)
                 )
                 qs = qs.exclude(id__in=busy_ids)
@@ -385,8 +403,8 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'], url_path='unavailable-dates')
     def unavailable_dates(self, request, pk=None):
         """Plages de dates où le véhicule est indisponible (contrats en cours
-        + réservations actives). Utilisé par les datepickers du front web pour
-        désactiver les dates non disponibles à la location."""
+        + réservations actives), étendues du délai de confort. Utilisé par les
+        datepickers du front web pour désactiver les dates non disponibles."""
         vehicle = self.get_object()
         ranges = []
 
@@ -395,8 +413,8 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
             statut__in=['RESERVE', 'EN_COURS'],
         ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
             ranges.append({
-                'start': c.date_sortie.isoformat(),
-                'end': c.date_retour_prevue.isoformat(),
+                'start': (c.date_sortie - agency_buffer(vehicle.agency)).isoformat(),
+                'end': (c.date_retour_prevue + agency_buffer(vehicle.agency)).isoformat(),
                 'type': 'contract',
                 'id': c.id,
             })
@@ -406,8 +424,8 @@ class PublicVehicleViewSet(viewsets.ReadOnlyModelViewSet):
             statut__in=['PENDING', 'CONFIRMED'],
         ).exclude(date_sortie__isnull=True).exclude(date_retour_prevue__isnull=True):
             ranges.append({
-                'start': r.date_sortie.isoformat(),
-                'end': r.date_retour_prevue.isoformat(),
+                'start': (r.date_sortie - agency_buffer(vehicle.agency)).isoformat(),
+                'end': (r.date_retour_prevue + agency_buffer(vehicle.agency)).isoformat(),
                 'type': 'reservation',
                 'id': r.id,
             })

@@ -211,6 +211,7 @@ def _agency_settings_payload(agency, request):
         "traccar_username": traccar_username,
         "traccar_password_set": bool(agency.traccar_password),
         "traccar_configured": traccar_configured,
+        "location_buffer_hours": int(agency.location_buffer_hours),
     }
 
 
@@ -286,6 +287,14 @@ class AgencySettingsView(APIView):
                 except (ValueError, TypeError):
                     continue
             agency.brands.set(Brand.objects.filter(id__in=brand_ids))
+
+        if 'location_buffer_hours' in request.data:
+            try:
+                val = float(request.data['location_buffer_hours'])
+                if val >= 0:
+                    agency.location_buffer_hours = val
+            except (ValueError, TypeError):
+                pass
 
         # Configuration Traccar (compte par agence)
         if 'traccar_url' in request.data:

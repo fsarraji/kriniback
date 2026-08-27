@@ -25,6 +25,14 @@ class Agency(models.Model):
     km_par_jour = models.IntegerField(default=250, verbose_name="Km inclus par jour")
     km_tarif_extra_defaut = models.DecimalField(max_digits=6, decimal_places=2, default=1.50, verbose_name="Tarif DH par km supplémentaire (défaut)")
 
+    # Délai de confort (en heures) : minutes de préparation/nettoyage avant et
+    # après chaque location, pendant lesquelles la voiture reste indisponible.
+    location_buffer_hours = models.DecimalField(
+        max_digits=4, decimal_places=0, default=2,
+        verbose_name="Délai de confort (heures)",
+        help_text="Heures d'indisponibilité supplémentaires avant et après chaque location."
+    )
+
     # Marques affichées dans les formulaires (vide = toutes les marques)
     brands = models.ManyToManyField('fleet.Brand', related_name='agencies', blank=True, verbose_name="Marques affichées")
 
