@@ -95,12 +95,15 @@
 
   /* CARDS */
   .card-container {
-    display: flex;
-    gap: 12px;
+    display: table;
+    width: 100%;
+    border-spacing: 6px 0;
     margin-bottom: 12px;
   }
   .card {
-    flex: 1;
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px 10px;
@@ -142,7 +145,9 @@
 
   /* GAUGE CARDS */
   .gauge-box {
-    flex: 1;
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
     text-align: center;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -199,21 +204,20 @@
 
   /* SIGNATURES */
   .signatures {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
+    display: table;
+    width: 100%;
+    border-spacing: 8px 0;
     margin-top: 15px;
     page-break-inside: avoid;
   }
   .sig-box {
-    flex: 1;
+    display: table-cell;
+    width: 50%;
+    vertical-align: middle;
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px;
     height: 150px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
     background: var(--gray-bg);
   }
   .sig-title { font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
@@ -276,7 +280,7 @@
   <!-- CLIENT & VEHICLE CARDS -->
   <div class="card-container">
     <!-- CLIENT CARTE -->
-    <div class="card card-bg" style="flex: {% if contract.deuxieme_chauffeur %}1.6{% else %}1{% endif %};">
+    <div class="card card-bg" style="width: {% if contract.deuxieme_chauffeur %}62%{% else %}50%{% endif %};">
       <div class="card-header">1. Informations Locataire 
         {% if contract.deuxieme_chauffeur %} &amp; 2ème Conducteur {% endif %}
       </div>
@@ -315,8 +319,8 @@
     </div>
     
     <!-- VEHICLE CARTE -->
-    <div class="card" style="flex: 1;">
-      <div class="card-header">2. Description du Véhicule</div>
+<div class="card" style="width: {% if contract.deuxieme_chauffeur %}40%{% else %}50%{% endif %};">
+  <div class="card-header">2. Description du Véhicule</div>
       <div class="specs-grid" style="margin-bottom: 16px;">
         <div class="spec-box"><div class="spec-label">Véhicule</div><div class="spec-val title-font">{{ contract.vehicle.modele|default:"—" }}</div></div>
         <div class="spec-box"><div class="spec-label">Matricule</div><div class="spec-val title-font">{{ contract.vehicle.matricule|default:"—" }}</div></div>
@@ -405,8 +409,8 @@
   <!-- DEGATS & PAIEMENT -->
   <div class="card-container">
     <!-- DEGATS -->
-    <div class="card" style="flex: 1.5;">
-      <div class="card-header">3. État des Lieux et Dégâts Carrosserie</div>
+<div class="card" style="width: 60%;">
+  <div class="card-header">3. État des Lieux et Dégâts Carrosserie</div>
       <!-- Situation Départ -->
       <div style="display:flex; gap: 16px; align-items:flex-start; margin-bottom: 16px; border-bottom: 1px dotted var(--border); padding-bottom: 10px;">
         <div style="width: 120px; text-align: center;">
@@ -439,8 +443,8 @@
     </div>
     
     <!-- PAIEMENT -->
-    <div class="card" style="flex: 1;">
-      <div class="card-header">4. Bilan Financier</div>
+<div class="card" style="width: 40%;">
+  <div class="card-header">4. Bilan Financier</div>
       <div class="kv-list">
         <div class="kv-item"><span class="kv-label">Durée Confirmée</span><span class="kv-value">{{ contract.jours|default:"0" }} Jours</span></div>
         <div class="kv-item"><span class="kv-label">Tarif Journalier</span><span class="kv-value">{{ contract.prix_par_jour|floatformat:2|default:"0.00" }} DH</span></div>
