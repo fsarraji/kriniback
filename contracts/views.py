@@ -140,7 +140,7 @@ def _get_car_diagram_source():
     if not os.path.exists(car_diagram_path):
         return None
     img = Image.open(car_diagram_path).convert('RGB')
-    img.thumbnail((600, 600), Image.Resampling.LANCZOS)
+    img.thumbnail((250, 250), Image.Resampling.LANCZOS)
     return img
 
 
