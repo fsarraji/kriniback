@@ -132,11 +132,15 @@
 
   /* GRID SPECS */
   .specs-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
+    display: table;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6px 0;
   }
   .spec-box {
+    display: table-cell;
+    width: 25%;
+    vertical-align: top;
     border-left: 2px solid #cbd5e1;
     padding-left: 6px;
   }
