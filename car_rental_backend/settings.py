@@ -161,6 +161,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 CORS_ALLOW_ALL_ORIGINS = True # في مرحلة الإنتاج سنحدد النطاقات المسموحة فقط
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'kricar-pdf',
+    },
+}
 # إخبار جانغو أننا نستخدم نموذج مستخدم مخصص بدل الافتراضي
 AUTH_USER_MODEL = 'agency.CustomUser'
 # 1. إخبار Django REST Framework باستخدام JWT كوسيلة أساسية للمصادقة
