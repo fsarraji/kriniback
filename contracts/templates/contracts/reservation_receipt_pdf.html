@@ -42,9 +42,7 @@
   
   /* HEADER */
   .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    display: block;
     border-bottom: 2px solid var(--primary);
     padding-bottom: 6px;
     margin-bottom: 8px;
@@ -89,12 +87,15 @@
 
   /* CARDS */
   .card-container {
-    display: flex;
-    gap: 10px;
+    display: table;
+    width: 100%;
+    border-spacing: 5px 0;
     margin-bottom: 8px;
   }
   .card {
-    flex: 1;
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px;
@@ -147,21 +148,20 @@
 
   /* SIGNATURES */
   .signatures {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
+    display: table;
+    width: 100%;
+    border-spacing: 5px 0;
     margin-top: 12px;
     page-break-inside: avoid;
   }
   .sig-box {
-    flex: 1;
+    display: table-cell;
+    width: 50%;
+    vertical-align: middle;
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px;
     height: 85px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
     background: var(--gray-bg);
   }
   .sig-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
@@ -181,32 +181,34 @@
 </head>
 <body>
 
-  <!-- HEADER -->
-  <div class="header" style="align-items: center;">
-    <div style="flex: 2; display: flex; align-items: center; gap: 12px;">
-      {% if whatsapp_qr_base64 %}
-      <div>
-        <img src="{{ whatsapp_qr_base64 }}" style="width: 45px; height: 45px; border-radius: 4px; border: 1px solid var(--border); padding: 2px; background: white;" />
-      </div>
-      {% endif %}
-      <div>
-        <div class="brand-name title-font" style="margin-bottom: 2px;">{{ agency.nom_agence|default:"Votre Agence" }}</div>
-        <div class="brand-details">
-          <div>{{ agency.adresse|default:"Adresse de l'agence non renseignée" }}</div>
-          <div style="margin-top: 2px;">
-            Tél: <strong>{{ agency.telephone|default:"-" }}</strong> &nbsp;&bull;&nbsp; 
-            RC: <strong>{{ agency.rc|default:"-" }}</strong>
-          </div>
+<!-- HEADER -->
+  <div class="header">
+    <table style="width:100%; border-collapse:collapse;"><tr>
+      <td style="text-align:left; vertical-align:middle; padding-right:10px;">
+        <table style="border-collapse:collapse;"><tr>
+          {% if whatsapp_qr_base64 %}
+          <td style="padding-right:10px; vertical-align:middle;"><img src="{{ whatsapp_qr_base64 }}" style="width: 45px; height: 45px; border-radius: 4px; border: 1px solid var(--border); padding: 2px; background: white;" /></td>
+          {% endif %}
+          <td style="vertical-align:middle;">
+            <div class="brand-name title-font" style="margin-bottom: 2px;">{{ agency.nom_agence|default:"Votre Agence" }}</div>
+            <div class="brand-details">
+              <div>{{ agency.adresse|default:"Adresse de l'agence non renseignée" }}</div>
+              <div style="margin-top: 2px;">
+                Tél: <strong>{{ agency.telephone|default:"-" }}</strong> &nbsp;&bull;&nbsp;
+                RC: <strong>{{ agency.rc|default:"-" }}</strong>
+              </div>
+            </div>
+          </td>
+        </tr></table>
+      </td>
+      <td style="text-align: right; vertical-align: middle;">
+        <div class="receipt-id title-font">RÉSERVATION #{{ contract.id|stringformat:"04d"|default:"0000" }}</div>
+        <div class="brand-details" style="margin-top: 4px;">
+          Émis le: <strong>{{ contract.date_creation|date:"d/m/Y - H:i"|default:"—" }}</strong><br>
+          Agent: <strong>{{ contract.created_by.get_full_name|default:contract.created_by.username|default:"—" }}</strong>
         </div>
-      </div>
-    </div>
-    <div style="text-align: right; flex: 1;">
-      <div class="receipt-id title-font">RÉSERVATION #{{ contract.id|stringformat:"04d"|default:"0000" }}</div>
-      <div class="brand-details" style="margin-top: 4px;">
-        Émis le: <strong>{{ contract.date_creation|date:"d/m/Y - H:i"|default:"—" }}</strong><br>
-        Agent: <strong>{{ contract.created_by.get_full_name|default:contract.created_by.username|default:"—" }}</strong>
-      </div>
-    </div>
+      </td>
+    </tr></table>
   </div>
 
   <div class="receipt-title title-font">Reçu de Réservation de Véhicule</div>
@@ -245,23 +247,23 @@
 
   <!-- FINANCES -->
   <div class="card-container">
-    <div class="card" style="flex: 2;">
+    <div class="card" style="width: 100%;">
       <div class="card-header">4. Bilan de la Réservation</div>
-      <div style="display: flex; gap: 12px;">
-        <div style="flex: 1;" class="kv-list">
+      <table style="width:100%; border-collapse:collapse;"><tr>
+        <td style="width:50%; vertical-align:top; padding:0 6px 0 0;"><div class="kv-list">
           <div class="kv-item"><span class="kv-label">Tarif Journalier</span><span class="kv-value">{{ contract.prix_par_jour|floatformat:2 }} DH</span></div>
           <div class="kv-item"><span class="kv-label">Montant Total</span><span class="kv-value">{{ contract.montant_total|floatformat:2 }} DH</span></div>
           <div class="kv-item"><span class="kv-label">Méthode de Paiement</span><span class="kv-value">{{ contract.methode_paiement|default:"Espèce" }}</span></div>
-        </div>
-        <div style="flex: 1; border-left: 1px dotted var(--border); padding-left: 12px;" class="kv-list">
+        </div></td>
+        <td style="width:50%; vertical-align:top; border-left:1px dotted var(--border); padding-left:12px;"><div class="kv-list">
           <div class="kv-item"><span class="kv-label">Avance Versée</span><span class="kv-value" style="color:#16a34a;">{{ contract.montant_paye|floatformat:2 }} DH</span></div>
           <div class="kv-item"><span class="kv-label">Caution / Dépôt</span><span class="kv-value">{{ contract.caution|floatformat:2 }} DH</span></div>
           <div class="total-block">
             <span style="font-size:10px; text-transform:uppercase; font-weight:700;">Reste à payer</span>
             <span class="amount-val">{{ contract.reste_a_payer|floatformat:2 }} <span style="font-size:10px;">DH</span></span>
           </div>
-        </div>
-      </div>
+        </div></td>
+      </tr></table>
     </div>
   </div>
 
