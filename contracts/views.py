@@ -34,11 +34,14 @@ _pdf_session = requests.Session()
 def generate_pdf(html_string):
     service_url = settings.PDF_SERVICE_URL.rstrip('/') + '/convert'
     html_size = len(html_string.encode('utf-8'))
+    print(f"[KRINI-PDF] Calling service_url={service_url} html_size={html_size}", flush=True)
 
     started = perf_counter()
     try:
         resp = _pdf_session.post(service_url, json={"html": html_string}, timeout=(10, 90))
     except requests.RequestException as e:
+        print(f"[KRINI-PDF] REQUEST EXCEPTION: {e!r}", flush=True)
+        import traceback; traceback.print_exc()
         logger.error("pdf_service_http_error", extra={
             "error": str(e),
             "html_size": html_size,
@@ -55,6 +58,8 @@ def generate_pdf(html_string):
 
     if not pdf.startswith(b"%PDF"):
         raise RuntimeError("PDF service returned an invalid PDF")
+
+    print(f"[KRINI-PDF] OK pdf_size={len(pdf)} http_time={round(http_time,3)}", flush=True)
 
     logger.info("pdf_generated", extra={
         "html_size": html_size,
