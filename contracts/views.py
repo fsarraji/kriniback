@@ -614,6 +614,33 @@ class ContractViewSet(viewsets.ModelViewSet):
             'reste_a_payer': str(contract.reste_a_payer),
         }, status=status.HTTP_200_OK)
 
+    # مسار مخصص لإلغاء عقد/حجز من نوع RESERVE (réservation agence)
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        contract = self.get_object()
+
+        if contract.statut != 'RESERVE':
+            return Response(
+                {'detail': 'Seule une réservation (contrat en statut Réservé) peut être annulée.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Seul le gérant (OWNER) ou un superadmin peut annuler.
+        if not (request.user.is_superuser or request.user.role == 'OWNER'):
+            return Response(
+                {'detail': 'Seul le gérant de la société peut annuler une réservation.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        contract.statut = 'ANNULE'
+        # Le save() libère le véhicule (mise en disponible).
+        contract.save()
+
+        return Response({
+            'detail': 'Réservation annulée (contrat annulé).',
+            'statut': contract.statut,
+        }, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get'])
     def print_contract(self, request, pk=None):
         try:
@@ -810,6 +837,47 @@ class ReservationViewSet(viewsets.ModelViewSet):
         response = super().destroy(request, *args, **kwargs)
         _release_vehicle(reservation.vehicle)
         return response
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Annule une réservation (PENDING ou CONFIRMED).
+
+        - Un client ne peut annuler que sa propre réservation en attente.
+        - Le personnel d'agence peut annuler une réservation en attente.
+        - Le gérant (OWNER) ou un superadmin peut annuler n'importe quelle
+          réservation, y compris confirmée.
+        """
+        reservation = self.get_object()
+
+        if request.user.role == 'CLIENT':
+            if reservation.client != getattr(request.user, 'client_profile', None):
+                return Response({'detail': 'Réservation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            if reservation.statut != 'PENDING':
+                return Response(
+                    {'detail': 'Vous ne pouvez qu\'annuler une réservation en attente.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        else:
+            # Annulation d'une réservation confirmée : réservée au gérant/superadmin.
+            if reservation.statut == 'CONFIRMED' and not (request.user.is_superuser or request.user.role == 'OWNER'):
+                return Response(
+                    {'detail': 'Seul le gérant de la société peut annuler une réservation confirmée.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            if reservation.statut not in ('PENDING', 'CONFIRMED'):
+                return Response(
+                    {'detail': 'Réservation déjà annulée.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        reservation.statut = 'CANCELLED'
+        # Le save() du modèle libère le véhicule lorsque le statut devient CANCELLED.
+        reservation.save(update_fields=['statut'])
+
+        return Response({
+            'detail': 'Réservation annulée avec succès.',
+            'statut': reservation.statut,
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
