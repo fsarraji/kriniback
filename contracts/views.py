@@ -539,6 +539,81 @@ class ContractViewSet(viewsets.ModelViewSet):
             'km_parcourus': contract.km_retour - contract.km_sortie,
         }, status=status.HTTP_200_OK)
         
+    # مسار مخصص لتمديد العقد (Prolonger le contrat)
+    @action(detail=True, methods=['post'])
+    def prolong(self, request, pk=None):
+        contract = self.get_object()
+
+        if contract.statut == 'TERMINE':
+            return Response({'detail': 'هذا العقد منتهي بالفعل.'}, status=status.HTTP_400_BAD_REQUEST)
+        if contract.statut == 'ANNULE':
+            return Response({'detail': 'لا يمكن تمديد عقد ملغى.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        date_retour_prevue = request.data.get('date_retour_prevue')
+        if not date_retour_prevue:
+            return Response({'detail': 'يجب تحديد تاريخ الإرجاع الجديد.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from django.utils.dateparse import parse_datetime
+            from .serializers import _make_aware
+            new_retour = _make_aware(parse_datetime(date_retour_prevue))
+        except Exception:
+            new_retour = None
+        if new_retour is None:
+            return Response({'detail': 'تاريخ الإرجاع غير صالح.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_retour <= contract.date_retour_prevue:
+            return Response(
+                {'detail': 'تاريخ الإرجاع الجديد يجب أن يكون بعد تاريخ الإرجاع الحالي.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # --- Vérification de disponibilité du véhicule sur la nouvelle période ---
+        from .availability import agency_buffer
+        buffer = agency_buffer(contract.vehicle.agency)
+        overlapping = Contract.objects.filter(
+            vehicle=contract.vehicle,
+            statut__in=['RESERVE', 'EN_COURS'],
+            date_sortie__lt=new_retour + buffer,
+            date_retour_prevue__gt=contract.date_sortie - buffer,
+        ).exclude(pk=contract.pk)
+        if overlapping.exists():
+            return Response(
+                {'detail': 'هذا الكراء يتعارض مع عقد آخر على نفس السيارة.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        overlapping_res = Reservation.objects.filter(
+            vehicle=contract.vehicle,
+            statut__in=['PENDING', 'CONFIRMED'],
+            date_sortie__lt=new_retour + buffer,
+            date_retour_prevue__gt=contract.date_sortie - buffer,
+        ).exists()
+        if overlapping_res:
+            return Response(
+                {'detail': 'هذه السيارة لديها حجز في نفس الفترة.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # --- Recalcul de la durée et du montant ---
+        diff = new_retour - contract.date_sortie
+        new_jours = math.ceil(diff.total_seconds() / (24 * 3600))
+        if new_jours < 1:
+            new_jours = 1
+
+        contract.date_retour_prevue = new_retour
+        contract.jours = new_jours
+        # Le save() recalcule montant_total et reste_a_payer selon la saisonnalité.
+        contract.save()
+
+        return Response({
+            'detail': 'تم تمديد العقد بنجاح.',
+            'date_retour_prevue': contract.date_retour_prevue.isoformat(),
+            'jours': contract.jours,
+            'montant_total': str(contract.montant_total),
+            'reste_a_payer': str(contract.reste_a_payer),
+        }, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get'])
     def print_contract(self, request, pk=None):
         try:
