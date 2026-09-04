@@ -120,4 +120,4 @@ class ClientAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Client
-        fields = ['id', 'username', 'nom', 'prenom', 'telephone', 'email', 'cin_passport', 'nationalite', 'sexe', 'adresse', 'ville', 'pays', 'scan_cin', 'scan_permis']
+        fields = ['id', 'username', 'nom', 'prenom', 'telephone', 'email', 'cin_passport', 'nationalite', 'sexe', 'adresse', 'ville', 'pays', 'photo', 'scan_cin', 'scan_permis']

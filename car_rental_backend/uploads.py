@@ -65,6 +65,11 @@ def client_document_upload_permis(instance, filename):
     return _client_document_path(instance, 'permis', filename)
 
 
+def client_photo_upload(instance, filename):
+    """Upload de la photo de profil : `<agence>/clients_photos/`."""
+    return f'{agency_segment(instance)}/clients_photos/{_safe_filename(filename)}'
+
+
 def agency_logo_upload_to(instance, filename):
     name = _safe_filename(filename)
     return f'{agency_segment(instance)}/agency_logos/{name}'
