@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+:root { --background: #f6f8fb; --foreground: #172033; --muted: #667085; --line: #e6eaf0; --navy: #132238; --blue: #2672e8; --green: #27a66f; --amber: #e5a631; --red: #d65c62; }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
+button { font: inherit; }
+::selection { background: #d9e8ff; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+.animate-rise { animation: rise .45s ease both; }
+.delay-1 { animation-delay: .06s } .delay-2 { animation-delay: .12s } .delay-3 { animation-delay: .18s }
