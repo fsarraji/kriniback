@@ -145,7 +145,7 @@ class ContractDamageSerializer(serializers.ModelSerializer):
 class PdfJobSerializer(serializers.ModelSerializer):
     class Meta:
         model = PdfJob
-        fields = ['id', 'contract', 'job_type', 'with_cachet', 'status', 'error_message', 'created_at', 'updated_at']
+        fields = ['id', 'contract', 'job_type', 'template', 'with_cachet', 'status', 'error_message', 'created_at', 'updated_at']
         read_only_fields = ['id', 'status', 'error_message', 'created_at', 'updated_at']
 
 class ContractSerializer(serializers.ModelSerializer):

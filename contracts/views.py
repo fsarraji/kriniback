@@ -28,6 +28,15 @@ from .serializers import ContractSerializer, PdfJobSerializer, BookingRequestSer
 
 logger = logging.getLogger(__name__)
 
+CONTRACT_TEMPLATE_PATHS = {
+    'standard': 'contracts/contract_pdf.html',
+    'minimal': 'contracts/contract_pdf_minimal.html',
+}
+
+
+def resolve_contract_template_path(template):
+    return CONTRACT_TEMPLATE_PATHS.get(template, CONTRACT_TEMPLATE_PATHS['standard'])
+
 _pdf_session = requests.Session()
 
 
@@ -252,8 +261,8 @@ def _contract_barcode_base64(contract):
         return ""
 
 
-def build_contract_pdf(contract, agency, with_cachet=False):
-    template_path = 'contracts/contract_pdf.html'
+def build_contract_pdf(contract, agency, with_cachet=False, template='standard'):
+    template_path = resolve_contract_template_path(template)
     start = perf_counter()
 
     depart_damages = contract.damages.filter(type='DEPART')
@@ -380,7 +389,7 @@ def process_pdf_job(job_id):
         agency = contract.agency
 
         if job.job_type == 'contract':
-            pdf_bytes = build_contract_pdf(contract, agency, job.with_cachet)
+            pdf_bytes = build_contract_pdf(contract, agency, job.with_cachet, job.template)
             filename = f"contrat_{contract.id}.pdf"
         else:
             pdf_bytes = build_receipt_pdf(contract, agency)
@@ -647,8 +656,9 @@ class ContractViewSet(viewsets.ModelViewSet):
             contract = self.get_object()
             agency = request.user.agency
             with_cachet = request.GET.get('with_cachet', 'false').lower() == 'true'
+            template = request.GET.get('template', 'standard')
 
-            pdf_file = build_contract_pdf(contract, agency, with_cachet)
+            pdf_file = build_contract_pdf(contract, agency, with_cachet, template)
 
             response = HttpResponse(pdf_file, content_type='application/pdf')
             response['Content-Disposition'] = f'inline; filename="Contrat_{contract.id}.pdf"'

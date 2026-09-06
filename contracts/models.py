@@ -225,9 +225,14 @@ class PdfJob(models.Model):
         ('contract', 'Contrat'),
         ('receipt', 'Reçu réservation'),
     ]
+    TEMPLATE_CHOICES = [
+        ('standard', 'Standard'),
+        ('minimal', 'Minimal'),
+    ]
 
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='pdf_jobs')
     job_type = models.CharField(max_length=20, choices=JOB_TYPES)
+    template = models.CharField(max_length=20, choices=TEMPLATE_CHOICES, default='standard', verbose_name="Template contrat")
     with_cachet = models.BooleanField(default=False, verbose_name="Avec cachet")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     error_message = models.TextField(null=True, blank=True)

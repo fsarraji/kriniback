@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Contrat de Location – {{ agency.nom_agence|default:"Agence" }}</title>
+
+<style>
+  @page {
+    size: A4;
+    margin: 7mm;
+  }
+
+  :root {
+    --primary: #111827;
+    --accent: #2563eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --line: #d1d5db;
+    --light-line: #e5e7eb;
+    --soft: #f8fafc;
+    --success: #166534;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    color: var(--text);
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5px;
+    line-height: 1.25;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .top {
+    display: table;
+    width: 100%;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 7px;
+    margin-bottom: 9px;
+  }
+
+  .top-left,
+  .top-right {
+    display: table-cell;
+    vertical-align: middle;
+  }
+
+  .top-left { width: 65%; }
+  .top-right {
+    width: 35%;
+    text-align: right;
+  }
+
+  .brand {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.7px;
+    color: var(--primary);
+  }
+
+  .agency-meta {
+    color: var(--muted);
+    font-size: 8.5px;
+    margin-top: 2px;
+  }
+
+  .agency-meta strong {
+    color: var(--text);
+  }
+
+  .contract-label {
+    color: var(--muted);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .contract-number {
+    color: var(--primary);
+    font-size: 18px;
+    font-weight: 800;
+    margin: 1px 0;
+  }
+
+  .contract-date {
+    color: var(--muted);
+    font-size: 8px;
+  }
+
+  .section {
+    margin-bottom: 7px;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--primary);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 3px;
+    margin-bottom: 4px;
+  }
+
+  .section-title .num {
+    color: var(--accent);
+  }
+
+  .info-table td {
+    padding: 3px 6px 3px 0;
+    vertical-align: top;
+    border-bottom: 1px dotted var(--light-line);
+  }
+
+  .info-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .label {
+    color: var(--muted);
+    font-size: 8px;
+  }
+
+  .value {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 9.5px;
+  }
+
+  .two-col {
+    display: table;
+    width: 100%;
+    border-spacing: 0;
+  }
+
+  .col {
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
+  }
+
+  .col:first-child {
+    padding-right: 9px;
+    border-right: 1px solid var(--light-line);
+  }
+
+  .col:last-child {
+    padding-left: 9px;
+  }
+
+  .vehicle-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
+  .vehicle-meta {
+    color: var(--muted);
+    font-size: 8.5px;
+  }
+
+  .driver-title {
+    font-size: 8px;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 3px;
+  }
+
+  .driver-extra {
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid var(--light-line);
+  }
+
+  .timeline {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border: 1px solid var(--line);
+  }
+
+  .timeline-cell {
+    display: table-cell;
+    width: 50%;
+    padding: 7px 9px;
+    vertical-align: top;
+  }
+
+  .timeline-cell + .timeline-cell {
+    border-left: 1px solid var(--line);
+  }
+
+  .timeline-title {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--muted);
+    font-weight: 800;
+    margin-bottom: 2px;
+  }
+
+  .timeline-date {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--primary);
+  }
+
+  .timeline-km {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--primary);
+  }
+
+  .timeline-km span {
+    font-size: 7px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .fuel {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 8px;
+  }
+
+  .damage-table {
+    table-layout: fixed;
+  }
+
+  .damage-table td {
+    width: 50%;
+    vertical-align: top;
+    padding: 5px 8px 5px 0;
+  }
+
+  .damage-table td + td {
+    padding-left: 8px;
+    padding-right: 0;
+    border-left: 1px solid var(--light-line);
+  }
+
+  .damage-box {
+    min-height: 52px;
+  }
+
+  .damage-title {
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 3px;
+  }
+
+  .damage-text {
+    color: var(--muted);
+    font-size: 8.5px;
+  }
+
+  .diagram {
+    width: 72px;
+    height: 48px;
+    object-fit: contain;
+    float: left;
+    margin-right: 8px;
+    border: 1px solid var(--light-line);
+  }
+
+  .equipment-table th {
+    text-align: left;
+    padding: 3px 5px;
+    background: var(--soft);
+    color: var(--muted);
+    font-size: 7.5px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .equipment-table td {
+    padding: 3px 5px;
+    border-bottom: 1px solid var(--light-line);
+    font-size: 8.5px;
+  }
+
+  .equipment-table th:not(:first-child),
+  .equipment-table td:not(:first-child) {
+    text-align: center;
+    width: 70px;
+  }
+
+  .yes {
+    color: var(--success);
+    font-weight: 800;
+  }
+
+  .no {
+    color: var(--muted);
+  }
+
+  .finance-layout {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .finance-left,
+  .finance-right {
+    display: table-cell;
+    vertical-align: top;
+  }
+
+  .finance-left {
+    width: 64%;
+    padding-right: 12px;
+  }
+
+  .finance-right {
+    width: 36%;
+    padding-left: 12px;
+    border-left: 1px solid var(--light-line);
+  }
+
+  .finance-table td {
+    padding: 3px 0;
+    border-bottom: 1px dotted var(--light-line);
+  }
+
+  .finance-table td:last-child {
+    text-align: right;
+    font-weight: 700;
+  }
+
+  .finance-total {
+    border-top: 2px solid var(--primary);
+    margin-top: 5px;
+    padding-top: 6px;
+  }
+
+  .finance-total-label {
+    color: var(--muted);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+  }
+
+  .finance-total-value {
+    color: var(--primary);
+    font-size: 18px;
+    font-weight: 800;
+    margin-top: 1px;
+  }
+
+  .km-note {
+    color: var(--muted);
+    font-size: 7.5px;
+    margin-top: 3px;
+  }
+
+  .signatures {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    margin-top: 8px;
+    page-break-inside: avoid;
+  }
+
+  .signature {
+    display: table-cell;
+    width: 50%;
+    height: 85px;
+    vertical-align: top;
+    border-top: 1px solid var(--primary);
+    padding-top: 5px;
+  }
+
+  .signature:first-child {
+    padding-right: 15px;
+  }
+
+  .signature:last-child {
+    padding-left: 15px;
+  }
+
+  .signature-title {
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--primary);
+  }
+
+  .signature-text {
+    color: var(--muted);
+    font-size: 7.5px;
+    margin-top: 3px;
+  }
+
+  .stamp {
+    text-align: center;
+    height: 55px;
+    margin-top: 3px;
+  }
+
+  .stamp img {
+    max-width: 100px;
+    max-height: 55px;
+    object-fit: contain;
+  }
+
+  .footer {
+    border-top: 1px solid var(--line);
+    margin-top: 7px;
+    padding-top: 5px;
+    display: table;
+    width: 100%;
+    color: var(--muted);
+    font-size: 7px;
+  }
+
+  .footer-left,
+  .footer-right {
+    display: table-cell;
+  }
+
+  .footer-right {
+    text-align: right;
+  }
+
+  .qr {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  .qr-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+  }
+
+  .qr-label {
+    color: var(--muted);
+    font-size: 7px;
+    text-align: left;
+  }
+
+  .barcode {
+    width: 75px;
+    height: 20px;
+    object-fit: contain;
+    display: inline-block;
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="top">
+  <div class="top-left">
+    <div class="brand">{{ agency.nom_agence|default:"Votre Agence" }}</div>
+    <div class="agency-meta">
+      {{ agency.adresse|default:"Adresse de l'agence non renseignée" }}
+      &nbsp; · &nbsp;
+      Tél. <strong>{{ agency.telephone|default:"-" }}</strong>
+      &nbsp; · &nbsp;
+      RC <strong>{{ agency.rc|default:"-" }}</strong>
+      &nbsp; · &nbsp;
+      ICE <strong>{{ agency.ice|default:"-" }}</strong>
+    </div>
+  </div>
+
+  <div class="top-right">
+    <div class="contract-label">Contrat de location</div>
+    <div class="contract-number">
+      N° {{ contract.id|stringformat:"04d"|default:"0000" }}
+    </div>
+    <div class="contract-date">
+      Émis le {{ contract.date_creation|date:"d/m/Y - H:i"|default:"—" }}
+      ·
+      {{ contract.created_by.get_full_name|default:contract.created_by.username|default:"—" }}
+    </div>
+    {% if contract_barcode_base64 %}
+      <img class="barcode" src="{{ contract_barcode_base64 }}" />
+    {% endif %}
+  </div>
+</div>
+
+<!-- CLIENT + VEHICLE -->
+<div class="section">
+  <div class="section-title"><span class="num">01</span> Client & véhicule</div>
+
+  <div class="two-col">
+    <div class="col">
+      <div class="driver-title">Conducteur principal</div>
+
+      <table class="info-table">
+        <tr>
+          <td class="label">Nom complet</td>
+          <td class="value">{{ contract.client.nom }} {{ contract.client.prenom }}</td>
+        </tr>
+        <tr>
+          <td class="label">Nationalité</td>
+          <td class="value">{{ contract.client.nationalite|default:"Marocaine" }}</td>
+        </tr>
+        <tr>
+          <td class="label">CIN / Passeport</td>
+          <td class="value">{{ contract.client.cin_passport }}</td>
+        </tr>
+        <tr>
+          <td class="label">Expiration CIN</td>
+          <td class="value">{{ contract.client.date_expiration_cin|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="label">Permis</td>
+          <td class="value">{{ contract.client.permis_conduite }}</td>
+        </tr>
+        <tr>
+          <td class="label">Délivré le</td>
+          <td class="value">{{ contract.client.date_delivrance_permis|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="label">Adresse</td>
+          <td class="value">{{ contract.client.adresse }}</td>
+        </tr>
+      </table>
+
+      {% if contract.deuxieme_chauffeur %}
+      <div class="driver-extra">
+        <div class="driver-title">2ème conducteur</div>
+        <table class="info-table">
+          <tr>
+            <td class="label">Nom complet</td>
+            <td class="value">{{ contract.deuxieme_chauffeur.nom }} {{ contract.deuxieme_chauffeur.prenom }}</td>
+          </tr>
+          <tr>
+            <td class="label">CIN / Passeport</td>
+            <td class="value">{{ contract.deuxieme_chauffeur.cin_passport }}</td>
+          </tr>
+          <tr>
+            <td class="label">Permis</td>
+            <td class="value">{{ contract.deuxieme_chauffeur.permis_conduite }}</td>
+          </tr>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="col">
+      <div class="vehicle-name">{{ contract.vehicle.modele|default:"—" }}</div>
+      <div class="vehicle-meta">
+        Matricule <strong>{{ contract.vehicle.matricule|default:"—" }}</strong>
+        &nbsp; · &nbsp;
+        {{ contract.vehicle.couleur|default:"—" }}
+        &nbsp; · &nbsp;
+        {{ contract.vehicle.get_carburant_display|default:"—" }}
+      </div>
+
+      <table class="info-table" style="margin-top:7px;">
+        <tr>
+          <td class="label">Véhicule</td>
+          <td class="value">{{ contract.vehicle.modele|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="label">Immatriculation</td>
+          <td class="value">{{ contract.vehicle.matricule|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="label">Couleur</td>
+          <td class="value">{{ contract.vehicle.couleur|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="label">Carburant</td>
+          <td class="value">{{ contract.vehicle.get_carburant_display|default:"—" }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- LOCATION -->
+<div class="section">
+  <div class="section-title"><span class="num">02</span> Période de location</div>
+
+  <div class="timeline">
+    <div class="timeline-cell">
+      <div class="timeline-title">Départ · Mise à disposition</div>
+      <div class="timeline-date">
+        {{ contract.date_sortie|date:"d/m/Y - H:i"|default:"—" }}
+      </div>
+      <div class="timeline-km">
+        {{ contract.km_sortie|default:"0" }} <span>KM</span>
+      </div>
+      {% if fuel_depart_base64 %}
+        <div class="fuel">Niveau carburant : voir jauge ci-dessous</div>
+        <img src="{{ fuel_depart_base64 }}" style="width:48px;height:auto;margin-top:2px;">
+      {% endif %}
+    </div>
+
+    <div class="timeline-cell">
+      <div class="timeline-title">Retour · Prévu / effectif</div>
+      <div class="timeline-date">
+        {% if contract.date_retour_effective %}
+          {{ contract.date_retour_effective|date:"d/m/Y - H:i" }} <span class="muted">(Réel)</span>
+        {% else %}
+          {{ contract.date_retour_prevue|date:"d/m/Y - H:i"|default:"—" }} <span class="muted">(Prévu)</span>
+        {% endif %}
+      </div>
+      <div class="timeline-km">
+        {% if contract.km_retour %}
+          {{ contract.km_retour }} <span>KM</span>
+        {% else %}
+          <span style="font-size:9px;color:#6b7280;">En attente</span>
+        {% endif %}
+      </div>
+      {% if fuel_retour_base64 %}
+        <div class="fuel">Niveau carburant : voir jauge ci-dessous</div>
+        <img src="{{ fuel_retour_base64 }}" style="width:48px;height:auto;margin-top:2px;">
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ETAT + EQUIPEMENTS -->
+<div class="section">
+  <div class="section-title"><span class="num">03</span> État du véhicule</div>
+
+  <table class="damage-table">
+    <tr>
+      <td>
+        <div class="damage-box">
+          {% if car_diagram_base64 %}
+            <img class="diagram" src="{{ car_diagram_base64 }}">
+          {% endif %}
+          <div class="damage-title">Départ</div>
+          <div class="damage-text">
+            {{ contract.degats_depart|default:"Aucun dégât signalé par l'agent ou le client." }}
+          </div>
+        </div>
+      </td>
+
+      <td>
+        <div class="damage-box">
+          {% if retour_diagram_base64 %}
+            <img class="diagram" src="{{ retour_diagram_base64 }}">
+          {% endif %}
+          <div class="damage-title">Retour</div>
+          <div class="damage-text">
+            {{ contract.degats_retour|default:"Non rempli - en attente du retour véhicule." }}
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <table class="equipment-table">
+    <tr>
+      <th>Équipement</th>
+      <th>Départ</th>
+      <th>Retour</th>
+    </tr>
+    <tr>
+      <td>Roue de secours</td>
+      <td>{% if contract.roue_secours %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+      <td>{% if contract.roue_secours_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+    </tr>
+    <tr>
+      <td>Cric & manivelle</td>
+      <td>{% if contract.cric %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+      <td>{% if contract.cric_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+    </tr>
+    <tr>
+      <td>Gilet & extincteur</td>
+      <td>{% if contract.gilet %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+      <td>{% if contract.gilet_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+    </tr>
+    <tr>
+      <td>Papiers du véhicule</td>
+      <td>{% if contract.papiers %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+      <td>{% if contract.papiers_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+    </tr>
+  </table>
+</div>
+
+<!-- FINANCE -->
+<div class="section">
+  <div class="section-title"><span class="num">04</span> Bilan financier</div>
+
+  <div class="finance-layout">
+    <div class="finance-left">
+      <table class="finance-table">
+        <tr>
+          <td>Durée confirmée</td>
+          <td>{{ contract.jours|default:"0" }} jours</td>
+        </tr>
+        <tr>
+          <td>Tarif journalier</td>
+          <td>{{ contract.prix_par_jour|floatformat:2|default:"0.00" }} DH</td>
+        </tr>
+
+        {% if agency_km_extra_active %}
+        <tr>
+          <td>Forfait kilométrique</td>
+          <td>{{ km_inclus_total|default:"—" }} km</td>
+        </tr>
+        <tr>
+          <td>Tarif dépassement</td>
+          <td>{{ km_tarif_extra }} DH/km</td>
+        </tr>
+        {% endif %}
+
+        <tr>
+          <td>Montant global</td>
+          <td>{{ contract.montant_total|floatformat:2|default:"0.00" }} DH</td>
+        </tr>
+
+        {% if agency_km_extra_active and km_supplementaires > 0 %}
+        <tr>
+          <td>Supplément kilométrique ({{ km_supplementaires }} km)</td>
+          <td>+ {{ montant_km_extra }} DH</td>
+        </tr>
+        {% endif %}
+
+        <tr>
+          <td>Avance versée</td>
+          <td>{{ contract.montant_paye|floatformat:2|default:"0.00" }} DH</td>
+        </tr>
+        <tr>
+          <td>Dépôt / caution</td>
+          <td>{{ contract.caution|floatformat:2|default:"0.00" }} DH</td>
+        </tr>
+        <tr>
+          <td>Mode de règlement</td>
+          <td>{{ contract.methode_paiement|default:"Espèce" }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="finance-right">
+      <div class="finance-total-label">Reste à payer</div>
+      <div class="finance-total-value">
+        {{ contract.reste_a_payer|floatformat:2|default:"0.00" }}
+        <span style="font-size:9px;">DH</span>
+      </div>
+
+      {% if agency_km_extra_active %}
+      <div class="km-note">
+        {{ agency_km_par_jour }} km/j inclus ·
+        {{ km_tarif_extra }} DH/km supplémentaire
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- SIGNATURES -->
+<div class="signatures">
+  <div class="signature">
+    <div class="signature-title">Le locataire</div>
+    <div class="signature-text">
+      Lu et approuvé. Je m'engage à restituer le véhicule dans l'état où je l'ai reçu et à respecter le règlement.
+      {% if agency_km_extra_active %}
+      <br>
+      Kilométrage : {{ agency_km_par_jour }} km/j inclus ·
+      Supplément : {{ km_tarif_extra }} DH/km.
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="signature">
+    <div class="signature-title">Cachet & signature agence</div>
+    <div class="signature-text">
+      {% if cachet_base64 %}
+        <div class="stamp">
+          <img src="{{ cachet_base64 }}">
+        </div>
+      {% else %}
+        Véhicule confié par :
+        {{ contract.created_by.get_full_name|default:contract.created_by.username|default:"L'agent" }}
+        de {{ agency.nom_agence|default:"l'agence" }}.
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-left">
+    {% if whatsapp_qr_base64 %}
+      <span class="qr-wrap">
+        <img class="qr" src="{{ whatsapp_qr_base64 }}">
+        <span class="qr-label">CONTACTEZ-NOUS<br>WhatsApp</span>
+      </span>
+    {% endif %}
+    Document officiel · Confidentiel
+  </div>
+
+  <div class="footer-right">
+    Généré le {% now "d/m/Y à H:i" %}
+    &nbsp; · &nbsp;
+    {{ agency.nom_agence|default:"Agence" }}
+    &nbsp; · &nbsp; Page 1/1
+  </div>
+</div>
+
+</body>
+</html>
