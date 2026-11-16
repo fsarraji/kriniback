@@ -180,9 +180,18 @@ USE_TZ = True
 STATIC_URL = "static/"
 # Origines autorisées : CORS_ALLOWED_ORIGINS="https://a.com,https://b.com"
 # Par défaut : le front de production (surchargé par la variable d'environnement).
-_DEFAULT_FRONT = "https://krinifrontweb.vercel.app"
+_DEFAULT_FRONT = ",".join(
+    [
+        "https://krinifrontweb.vercel.app",
+        "https://krikar.ma",
+        "https://www.krikar.ma",
+    ]
+)
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", _DEFAULT_FRONT)
-CORS_ALLOWED_ORIGIN_REGEXES = _env_list("CORS_ALLOWED_ORIGIN_REGEXES")
+# Sous-domaines du domaine de production (ex. app.krikar.ma) autorisés par défaut.
+CORS_ALLOWED_ORIGIN_REGEXES = _env_list(
+    "CORS_ALLOWED_ORIGIN_REGEXES", r"^https://([a-z0-9-]+\.)*krikar\.ma$"
+)
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS", _DEFAULT_FRONT)
 
