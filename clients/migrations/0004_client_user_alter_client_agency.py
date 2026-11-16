@@ -6,22 +6,35 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0007_alter_customuser_role'),
-        ('clients', '0003_client_scan_cin_client_scan_permis_alter_client_id'),
+        ("agency", "0007_alter_customuser_role"),
+        ("clients", "0003_client_scan_cin_client_scan_permis_alter_client_id"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='client',
-            name='user',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='client_profile', to=settings.AUTH_USER_MODEL, verbose_name='Compte utilisateur'),
+            model_name="client",
+            name="user",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="client_profile",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="Compte utilisateur",
+            ),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='agency',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='clients', to='agency.agency', verbose_name='الوكالة'),
+            model_name="client",
+            name="agency",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="clients",
+                to="agency.agency",
+                verbose_name="الوكالة",
+            ),
         ),
     ]

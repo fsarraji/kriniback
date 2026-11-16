@@ -1,8 +1,11 @@
-from rest_framework import serializers
-from .models import Contract, ContractDamage, PdfJob, BookingRequest, Reservation
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework import serializers
+
+from car_rental_backend.permissions import check_same_agency
+
 from .availability import agency_buffer
+from .models import BookingRequest, Contract, ContractDamage, PdfJob, Reservation
 
 
 def _make_aware(dt):
@@ -17,7 +20,7 @@ def _make_aware(dt):
 
 
 def _normalize_dates(data):
-    for key in ('date_sortie', 'date_retour_prevue'):
+    for key in ("date_sortie", "date_retour_prevue"):
         if key in data:
             data[key] = _make_aware(data[key])
     return data
@@ -28,30 +31,46 @@ class BookingRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BookingRequest
-        fields = ['id', 'agency', 'vehicle', 'vehicle_name', 'nom', 'prenom', 'telephone', 'email', 'message', 'date_sortie', 'date_retour_prevue', 'statut', 'created_at']
-        read_only_fields = ['id', 'agency', 'statut', 'created_at']
+        fields = [
+            "id",
+            "agency",
+            "vehicle",
+            "vehicle_name",
+            "nom",
+            "prenom",
+            "telephone",
+            "email",
+            "message",
+            "date_sortie",
+            "date_retour_prevue",
+            "statut",
+            "created_at",
+        ]
+        read_only_fields = ["id", "agency", "statut", "created_at"]
 
     def get_vehicle_name(self, obj):
         if not obj.vehicle:
             return None
-        return f"{obj.vehicle.marque} {obj.vehicle.modele} - {obj.vehicle.matricule}"
+        return f"{obj.vehicle.display_name} - {obj.vehicle.matricule}"
 
     def validate(self, data):
-        vehicle = data.get('vehicle')
+        vehicle = data.get("vehicle")
         if not vehicle:
-            raise serializers.ValidationError({'vehicle': 'Le véhicule est requis.'})
+            raise serializers.ValidationError({"vehicle": "Le véhicule est requis."})
 
         _normalize_dates(data)
-        date_sortie = data.get('date_sortie')
-        date_retour_prevue = data.get('date_retour_prevue')
+        date_sortie = data.get("date_sortie")
+        date_retour_prevue = data.get("date_retour_prevue")
         if date_sortie and date_retour_prevue and date_retour_prevue <= date_sortie:
-            raise serializers.ValidationError("La date de retour doit être postérieure à la date de sortie.")
+            raise serializers.ValidationError(
+                "La date de retour doit être postérieure à la date de sortie."
+            )
 
         return data
 
     def create(self, validated_data):
-        vehicle = validated_data['vehicle']
-        validated_data['agency'] = vehicle.agency
+        vehicle = validated_data["vehicle"]
+        validated_data["agency"] = vehicle.agency
         return super().create(validated_data)
 
 
@@ -59,38 +78,55 @@ class ReservationSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
     vehicle_name = serializers.SerializerMethodField()
     formatted_dates = serializers.SerializerMethodField()
-    agency_name = serializers.CharField(source='agency.nom_agence', read_only=True)
+    agency_name = serializers.CharField(source="agency.nom_agence", read_only=True)
 
     class Meta:
         model = Reservation
-        fields = ['id', 'client', 'client_name', 'vehicle', 'vehicle_name', 'agency', 'agency_name', 'date_sortie', 'date_retour_prevue', 'prix_par_jour', 'statut', 'notes', 'created_at', 'formatted_dates']
-        read_only_fields = ['id', 'client', 'agency', 'prix_par_jour', 'created_at']
+        fields = [
+            "id",
+            "client",
+            "client_name",
+            "vehicle",
+            "vehicle_name",
+            "agency",
+            "agency_name",
+            "date_sortie",
+            "date_retour_prevue",
+            "prix_par_jour",
+            "statut",
+            "notes",
+            "created_at",
+            "formatted_dates",
+        ]
+        read_only_fields = ["id", "client", "agency", "prix_par_jour", "created_at"]
 
     def get_client_name(self, obj):
         return f"{obj.client.prenom} {obj.client.nom}"
 
     def get_vehicle_name(self, obj):
-        return f"{obj.vehicle.marque} {obj.vehicle.modele} - {obj.vehicle.matricule}"
+        return f"{obj.vehicle.display_name} - {obj.vehicle.matricule}"
 
     def get_formatted_dates(self, obj):
         return {
-            'sortie': obj.date_sortie.strftime('%b %d'),
-            'retour': obj.date_retour_prevue.strftime('%b %d'),
-            'range': f"{obj.date_sortie.strftime('%b %d')} — {obj.date_retour_prevue.strftime('%b %d')}"
+            "sortie": obj.date_sortie.strftime("%b %d"),
+            "retour": obj.date_retour_prevue.strftime("%b %d"),
+            "range": f"{obj.date_sortie.strftime('%b %d')} — {obj.date_retour_prevue.strftime('%b %d')}",
         }
 
     def validate(self, data):
         instance = self.instance
-        vehicle = data.get('vehicle') or (instance.vehicle if instance else None)
+        vehicle = data.get("vehicle") or (instance.vehicle if instance else None)
 
         _normalize_dates(data)
-        date_sortie = data.get('date_sortie')
-        date_retour_prevue = data.get('date_retour_prevue')
+        date_sortie = data.get("date_sortie")
+        date_retour_prevue = data.get("date_retour_prevue")
 
         if not vehicle:
-            raise serializers.ValidationError({'vehicle': 'Le véhicule est requis.'})
+            raise serializers.ValidationError({"vehicle": "Le véhicule est requis."})
         if date_sortie and date_retour_prevue and date_retour_prevue <= date_sortie:
-            raise serializers.ValidationError("La date de retour doit être postérieure à la date de sortie.")
+            raise serializers.ValidationError(
+                "La date de retour doit être postérieure à la date de sortie."
+            )
 
         # Vérifier les chevauchements : contrats actifs/réservés + réservations en attente/confirmées,
         # en appliquant le délai de confort de l'agence (la voiture est indisponible
@@ -99,126 +135,170 @@ class ReservationSerializer(serializers.ModelSerializer):
             buffer = agency_buffer(vehicle.agency)
             overlapping_contracts = Contract.objects.filter(
                 vehicle=vehicle,
-                statut__in=['RESERVE', 'EN_COURS'],
+                statut__in=["RESERVE", "EN_COURS"],
                 date_sortie__lt=date_retour_prevue + buffer,
                 date_retour_prevue__gt=date_sortie - buffer,
             ).exists()
             if overlapping_contracts:
-                raise serializers.ValidationError("Ce véhicule est déjà réservé ou loué pour cette période.")
+                raise serializers.ValidationError(
+                    "Ce véhicule est déjà réservé ou loué pour cette période."
+                )
 
             overlapping_reservations = Reservation.objects.filter(
                 vehicle=vehicle,
-                statut__in=['PENDING', 'CONFIRMED'],
+                statut__in=["PENDING", "CONFIRMED"],
                 date_sortie__lt=date_retour_prevue + buffer,
                 date_retour_prevue__gt=date_sortie - buffer,
             )
             if instance:
-                overlapping_reservations = overlapping_reservations.exclude(pk=instance.pk)
+                overlapping_reservations = overlapping_reservations.exclude(
+                    pk=instance.pk
+                )
             if overlapping_reservations.exists():
-                raise serializers.ValidationError("Ce véhicule a déjà une réservation en cours pour cette période.")
+                raise serializers.ValidationError(
+                    "Ce véhicule a déjà une réservation en cours pour cette période."
+                )
 
         return data
 
     def create(self, validated_data):
-        request = self.context.get('request')
-        client = getattr(request.user, 'client_profile', None) if request else None
+        request = self.context.get("request")
+        client = getattr(request.user, "client_profile", None) if request else None
         if not client:
-            raise serializers.ValidationError({'detail': 'Compte client requis pour créer une réservation.'})
+            raise serializers.ValidationError(
+                {"detail": "Compte client requis pour créer une réservation."}
+            )
 
-        vehicle = validated_data['vehicle']
+        vehicle = validated_data["vehicle"]
         if client.agency is None:
             client.agency = vehicle.agency
-            client.save(update_fields=['agency'])
+            client.save(update_fields=["agency"])
 
-        validated_data['client'] = client
-        validated_data['agency'] = vehicle.agency
-        quote = vehicle.prix_pour_periode(validated_data['date_sortie'], validated_data['date_retour_prevue'])
-        validated_data['prix_par_jour'] = quote['prix_moyen']
-        return super().create(validated_data)
+        validated_data["client"] = client
+        validated_data["agency"] = vehicle.agency
+        quote = vehicle.prix_pour_periode(
+            validated_data["date_sortie"], validated_data["date_retour_prevue"]
+        )
+        validated_data["prix_par_jour"] = quote["prix_moyen"]
+        from django.db import transaction
+
+        from .availability import assert_vehicle_free
+
+        with transaction.atomic():
+            assert_vehicle_free(
+                vehicle,
+                validated_data["date_sortie"],
+                validated_data["date_retour_prevue"],
+            )
+            return super().create(validated_data)
+
 
 class ContractDamageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractDamage
-        fields = ['id', 'type', 'x', 'y', 'description', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ["id", "type", "x", "y", "description", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
 
 class PdfJobSerializer(serializers.ModelSerializer):
     class Meta:
         model = PdfJob
-        fields = ['id', 'contract', 'job_type', 'template', 'with_cachet', 'status', 'error_message', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'status', 'error_message', 'created_at', 'updated_at']
+        fields = [
+            "id",
+            "contract",
+            "job_type",
+            "template",
+            "with_cachet",
+            "status",
+            "error_message",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "status", "error_message", "created_at", "updated_at"]
+
 
 class ContractSerializer(serializers.ModelSerializer):
     damages = ContractDamageSerializer(many=True, required=False)
-    client_name = serializers.CharField(source='client.nom', read_only=True)
-    client_prenom = serializers.CharField(source='client.prenom', read_only=True)
+    client_name = serializers.CharField(source="client.nom", read_only=True)
+    client_prenom = serializers.CharField(source="client.prenom", read_only=True)
     client_initials = serializers.SerializerMethodField()
     vehicle_name = serializers.SerializerMethodField()
     vehicle_matricule = serializers.SerializerMethodField()
-    vehicle_tarif_km_extra = serializers.DecimalField(source='vehicle.tarif_km_extra', max_digits=6, decimal_places=2, read_only=True, allow_null=True)
+    vehicle_tarif_km_extra = serializers.DecimalField(
+        source="vehicle.tarif_km_extra",
+        max_digits=6,
+        decimal_places=2,
+        read_only=True,
+        allow_null=True,
+    )
     formatted_dates = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Contract
-        fields = '__all__'
-        read_only_fields = ['agency', 'created_by', 'montant_total', 'reste_a_payer']
+        fields = "__all__"
+        read_only_fields = ["agency", "created_by", "montant_total", "reste_a_payer"]
 
     def create(self, validated_data):
-        damages_data = validated_data.pop('damages', [])
-        
+        damages_data = validated_data.pop("damages", [])
+
         # 1. Extraire les informations de paiement initiales
-        montant_paye = validated_data.pop('montant_paye', 0)
-        methode_paiement = validated_data.get('methode_paiement', 'Espèce')
-        
+        montant_paye = validated_data.pop("montant_paye", 0)
+        methode_paiement = validated_data.get("methode_paiement", "Espèce")
+
         # 2. Forcer le montant initial à 0 pour éviter le double comptage
         # car le modèle Payment mettra à jour ce montant via son save()
-        validated_data['montant_paye'] = 0
-        
+        validated_data["montant_paye"] = 0
+
         contract = super().create(validated_data)
-        
+
         # 3. Sauvegarder les dommages
         for damage_data in damages_data:
             ContractDamage.objects.create(contract=contract, **damage_data)
-            
+
         # 4. Créer la trace du paiement si une avance a été versée
         if montant_paye > 0:
             from payments.models import Payment
+
             Payment.objects.create(
                 agency=contract.agency,
                 contract=contract,
                 user=contract.created_by,
                 amount=montant_paye,
                 payment_method=methode_paiement,
-                notes="Avance initiale (Création)"
+                notes="Avance initiale (Création)",
             )
-            
+
         return contract
 
     def update(self, instance, validated_data):
-        damages_data = validated_data.pop('damages', None)
+        damages_data = validated_data.pop("damages", None)
         instance = super().update(instance, validated_data)
-        
+
         if damages_data is not None:
             for damage_data in damages_data:
                 # Assuming damages sent during update are additive or replace existing ones?
                 # For Activation, we just create the DEPART damages.
                 ContractDamage.objects.create(contract=instance, **damage_data)
-                
+
         return instance
 
     def validate(self, data):
-        vehicle = data.get('vehicle')
+        request = self.context.get("request")
+        for field in ("vehicle", "client", "deuxieme_chauffeur"):
+            check_same_agency(request, data.get(field), field)
+
+        vehicle = data.get("vehicle")
         # If updating, use existing data if not provided
         if self.instance and not vehicle:
             vehicle = self.instance.vehicle
 
         _normalize_dates(data)
-        date_sortie = data.get('date_sortie')
+        date_sortie = data.get("date_sortie")
         if self.instance and not date_sortie:
             date_sortie = self.instance.date_sortie
 
-        date_retour_prevue = data.get('date_retour_prevue')
+        date_retour_prevue = data.get("date_retour_prevue")
         if self.instance and not date_retour_prevue:
             date_retour_prevue = self.instance.date_retour_prevue
 
@@ -229,49 +309,53 @@ class ContractSerializer(serializers.ModelSerializer):
             # avant/après chaque location).
             overlapping = Contract.objects.filter(
                 vehicle=vehicle,
-                statut__in=['EN_COURS', 'RESERVE'],
+                statut__in=["EN_COURS", "RESERVE"],
                 date_sortie__lt=date_retour_prevue + buffer,
-                date_retour_prevue__gt=date_sortie - buffer
+                date_retour_prevue__gt=date_sortie - buffer,
             )
             if self.instance:
                 overlapping = overlapping.exclude(pk=self.instance.pk)
 
             if overlapping.exists():
-                raise serializers.ValidationError("Ce véhicule est déjà loué ou réservé pour la période sélectionnée.")
+                raise serializers.ValidationError(
+                    "Ce véhicule est déjà loué ou réservé pour la période sélectionnée."
+                )
 
             # Une réservation active (en attente/confirmée) occupe elle aussi le véhicule.
             overlapping_res = Reservation.objects.filter(
                 vehicle=vehicle,
-                statut__in=['PENDING', 'CONFIRMED'],
+                statut__in=["PENDING", "CONFIRMED"],
                 date_sortie__lt=date_retour_prevue + buffer,
-                date_retour_prevue__gt=date_sortie - buffer
+                date_retour_prevue__gt=date_sortie - buffer,
             )
             if overlapping_res.exists():
-                raise serializers.ValidationError("Ce véhicule a déjà une réservation en cours pour la période sélectionnée.")
+                raise serializers.ValidationError(
+                    "Ce véhicule a déjà une réservation en cours pour la période sélectionnée."
+                )
 
         return data
 
     def get_client_initials(self, obj):
-        n = (obj.client.nom or '')
-        p = (obj.client.prenom or '')
+        n = obj.client.nom or ""
+        p = obj.client.prenom or ""
         return f"{n[0] if n else ''}{p[0] if p else ''}"
 
     def get_vehicle_name(self, obj):
-        return f"{obj.vehicle.marque} {obj.vehicle.modele}"
+        return obj.vehicle.display_name
 
     def get_vehicle_matricule(self, obj):
         return obj.vehicle.matricule_actuel
 
     def get_formatted_dates(self, obj):
         return {
-            'sortie': obj.date_sortie.strftime('%b %d'),
-            'retour': obj.date_retour_prevue.strftime('%b %d'),
-            'range': f"{obj.date_sortie.strftime('%b %d')} — {obj.date_retour_prevue.strftime('%b %d')}"
+            "sortie": obj.date_sortie.strftime("%b %d"),
+            "retour": obj.date_retour_prevue.strftime("%b %d"),
+            "range": f"{obj.date_sortie.strftime('%b %d')} — {obj.date_retour_prevue.strftime('%b %d')}",
         }
 
     def get_payment_status(self, obj):
         if obj.reste_a_payer <= 0:
-            return 'Paid'
+            return "Paid"
         elif obj.montant_paye > 0:
-            return 'Partial'
-        return 'Unpaid'
+            return "Partial"
+        return "Unpaid"

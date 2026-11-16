@@ -5,109 +5,158 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('fleet', '0003_brand_alter_vehicle_marque_modelcar_and_more'),
+        ("fleet", "0003_brand_alter_vehicle_marque_modelcar_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='modelcar',
-            options={'verbose_name': 'Modèle de voiture', 'verbose_name_plural': 'Modèles de voitures'},
+            name="modelcar",
+            options={
+                "verbose_name": "Modèle de voiture",
+                "verbose_name_plural": "Modèles de voitures",
+            },
         ),
         migrations.AlterField(
-            model_name='brand',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="brand",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='brand',
-            name='name',
-            field=models.CharField(max_length=100, unique=True, verbose_name='Nom de la marque'),
+            model_name="brand",
+            name="name",
+            field=models.CharField(
+                max_length=100, unique=True, verbose_name="Nom de la marque"
+            ),
         ),
         migrations.AlterField(
-            model_name='modelcar',
-            name='brand',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='models', to='fleet.brand', verbose_name='Marque'),
+            model_name="modelcar",
+            name="brand",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="models",
+                to="fleet.brand",
+                verbose_name="Marque",
+            ),
         ),
         migrations.AlterField(
-            model_name='modelcar',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="modelcar",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='modelcar',
-            name='name',
-            field=models.CharField(max_length=100, verbose_name='Nom du modèle'),
+            model_name="modelcar",
+            name="name",
+            field=models.CharField(max_length=100, verbose_name="Nom du modèle"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='annee',
-            field=models.IntegerField(verbose_name='Année'),
+            model_name="vehicle",
+            name="annee",
+            field=models.IntegerField(verbose_name="Année"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='carburant',
-            field=models.CharField(choices=[('Diesel', 'Diesel'), ('Essence', 'Essence'), ('Hybride', 'Hybride'), ('Electrique', 'Electrique')], max_length=20, verbose_name='Carburant'),
+            model_name="vehicle",
+            name="carburant",
+            field=models.CharField(
+                choices=[
+                    ("Diesel", "Diesel"),
+                    ("Essence", "Essence"),
+                    ("Hybride", "Hybride"),
+                    ("Electrique", "Electrique"),
+                ],
+                max_length=20,
+                verbose_name="Carburant",
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='chauffeur_disponible',
-            field=models.BooleanField(default=False, verbose_name='Chauffeur disponible'),
+            model_name="vehicle",
+            name="chauffeur_disponible",
+            field=models.BooleanField(
+                default=False, verbose_name="Chauffeur disponible"
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='couleur',
-            field=models.CharField(max_length=30, verbose_name='Couleur'),
+            model_name="vehicle",
+            name="couleur",
+            field=models.CharField(max_length=30, verbose_name="Couleur"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='date_assurance',
-            field=models.DateField(verbose_name='Date assurance'),
+            model_name="vehicle",
+            name="date_assurance",
+            field=models.DateField(verbose_name="Date assurance"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='date_visite_technique',
-            field=models.DateField(verbose_name='Date visite technique'),
+            model_name="vehicle",
+            name="date_visite_technique",
+            field=models.DateField(verbose_name="Date visite technique"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="vehicle",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='kilometrage',
-            field=models.IntegerField(verbose_name='Kilométrage'),
+            model_name="vehicle",
+            name="kilometrage",
+            field=models.IntegerField(verbose_name="Kilométrage"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='marque',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='fleet.brand', verbose_name='Marque'),
+            model_name="vehicle",
+            name="marque",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="fleet.brand",
+                verbose_name="Marque",
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='matricule',
-            field=models.CharField(max_length=20, unique=True, verbose_name='Matricule'),
+            model_name="vehicle",
+            name="matricule",
+            field=models.CharField(
+                max_length=20, unique=True, verbose_name="Matricule"
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='modele',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='fleet.modelcar', verbose_name='Modèle'),
+            model_name="vehicle",
+            name="modele",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="fleet.modelcar",
+                verbose_name="Modèle",
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='prix_par_jour',
-            field=models.DecimalField(decimal_places=2, max_digits=8, verbose_name='Prix par jour'),
+            model_name="vehicle",
+            name="prix_par_jour",
+            field=models.DecimalField(
+                decimal_places=2, max_digits=8, verbose_name="Prix par jour"
+            ),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='prochain_vidange_km',
-            field=models.IntegerField(verbose_name='Prochain vidange (km)'),
+            model_name="vehicle",
+            name="prochain_vidange_km",
+            field=models.IntegerField(verbose_name="Prochain vidange (km)"),
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='statut',
-            field=models.CharField(choices=[('Available', 'Disponible'), ('Rented', 'Loué'), ('Maintenance', 'En maintenance')], default='Available', max_length=20, verbose_name='Statut'),
+            model_name="vehicle",
+            name="statut",
+            field=models.CharField(
+                choices=[
+                    ("Available", "Disponible"),
+                    ("Rented", "Loué"),
+                    ("Maintenance", "En maintenance"),
+                ],
+                default="Available",
+                max_length=20,
+                verbose_name="Statut",
+            ),
         ),
     ]

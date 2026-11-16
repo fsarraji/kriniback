@@ -21,7 +21,7 @@ def agency_buffer(agency):
     """Délai de confort de l'agence, ou la valeur par défaut si absente."""
     if agency is None:
         return LOCATION_BUFFER
-    hours = getattr(agency, 'location_buffer_hours', None)
+    hours = getattr(agency, "location_buffer_hours", None)
     try:
         return timedelta(hours=float(hours))
     except (TypeError, ValueError):
@@ -33,10 +33,11 @@ def max_buffer(agencies=None):
     agences actives si aucune n'est fournie). Utilisé pour les requêtes
     inter-agences (ex. catalogue public) afin de ne sous-estimer aucun délai."""
     from agency.models import Agency
+
     qs = agencies if agencies is not None else Agency.objects.filter(is_active=True)
     values = [
-        getattr(a, 'location_buffer_hours', None)
-        for a in qs.only('location_buffer_hours')
+        getattr(a, "location_buffer_hours", None)
+        for a in qs.only("location_buffer_hours")
     ]
     hours = [float(v) for v in values if v is not None]
     if not hours:
@@ -44,7 +45,9 @@ def max_buffer(agencies=None):
     return timedelta(hours=max(hours))
 
 
-def overlaps(period_start, period_end, existing_start, existing_end, buffer=LOCATION_BUFFER):
+def overlaps(
+    period_start, period_end, existing_start, existing_end, buffer=LOCATION_BUFFER
+):
     """Vrai si la fenêtre demandée [period_start, period_end] (étendue du délai
     de confort) chevauche une location existante [existing_start, existing_end]."""
     if period_start is None or period_end is None:
@@ -60,3 +63,49 @@ def overlaps(period_start, period_end, existing_start, existing_end, buffer=LOCA
 def extend(period_start, period_end, buffer=LOCATION_BUFFER):
     """Étend une période demandée du délai de confort (bornes incluses)."""
     return period_start - buffer, period_end + buffer
+
+
+def assert_vehicle_free(
+    vehicle, start, end, exclude_contract=None, exclude_reservation=None
+):
+    """Re-vérifie la disponibilité du véhicule EN tenant un verrou de ligne.
+
+    À appeler dans `transaction.atomic()` : le `select_for_update` sérialise les
+    créations concurrentes pour un même véhicule (la validation du serializer seule
+    laisse passer deux requêtes simultanées). Lève ValidationError si occupé.
+    """
+    from django.db import transaction
+    from rest_framework import serializers
+
+    from fleet.models import Vehicle
+
+    from .models import Contract, Reservation
+
+    if not transaction.get_connection().in_atomic_block:
+        raise RuntimeError(
+            "assert_vehicle_free doit être appelé dans transaction.atomic()"
+        )
+    locked = (
+        Vehicle.objects.select_for_update().select_related("agency").get(pk=vehicle.pk)
+    )
+    buffer = agency_buffer(locked.agency)
+    contracts = Contract.objects.filter(
+        vehicle=locked,
+        statut__in=["RESERVE", "EN_COURS"],
+        date_sortie__lt=end + buffer,
+        date_retour_prevue__gt=start - buffer,
+    )
+    if exclude_contract is not None:
+        contracts = contracts.exclude(pk=exclude_contract.pk)
+    reservations = Reservation.objects.filter(
+        vehicle=locked,
+        statut__in=["PENDING", "CONFIRMED"],
+        date_sortie__lt=end + buffer,
+        date_retour_prevue__gt=start - buffer,
+    )
+    if exclude_reservation is not None:
+        reservations = reservations.exclude(pk=exclude_reservation.pk)
+    if contracts.exists() or reservations.exists():
+        raise serializers.ValidationError(
+            "Ce véhicule vient d'être réservé ou loué pour cette période."
+        )

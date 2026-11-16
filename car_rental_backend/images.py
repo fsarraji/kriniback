@@ -10,7 +10,7 @@ from io import BytesIO
 from django.core.files.base import File
 
 # Extensions traitées par Pillow. Tout le reste (PDF, SVG, HEIC...) est ignoré.
-IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.webp'}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 
 DEFAULT_MAX_DIMENSION = 1600
 DEFAULT_JPEG_QUALITY = 82
@@ -21,8 +21,8 @@ def is_optimizable_image(name, content=None):
     if any(ext.endswith(e) for e in IMAGE_EXTS):
         return True
     if content is not None:
-        ctype = getattr(content, 'content_type', None) or ''
-        return ctype.startswith('image/')
+        ctype = getattr(content, "content_type", None) or ""
+        return ctype.startswith("image/")
     return False
 
 
@@ -37,7 +37,9 @@ def _decode(content):
     return content.getvalue()
 
 
-def optimize_image_bytes(name, content, max_dimension=DEFAULT_MAX_DIMENSION, quality=DEFAULT_JPEG_QUALITY):
+def optimize_image_bytes(
+    name, content, max_dimension=DEFAULT_MAX_DIMENSION, quality=DEFAULT_JPEG_QUALITY
+):
     """Re-encode l'image dans un flux optimisé, ou renvoie None si ignorable."""
     from PIL import Image, ImageOps
 
@@ -58,28 +60,28 @@ def optimize_image_bytes(name, content, max_dimension=DEFAULT_MAX_DIMENSION, qua
     if img.width > max_dimension or img.height > max_dimension:
         img.thumbnail((max_dimension, max_dimension), Image.LANCZOS)
 
-    has_alpha = 'A' in img.getbands()
+    has_alpha = "A" in img.getbands()
 
-    if ext.endswith('.png'):
+    if ext.endswith(".png"):
         if not has_alpha:
-            img = img.convert('RGB')
+            img = img.convert("RGB")
         buffer = BytesIO()
-        img.save(buffer, 'PNG', optimize=True)
+        img.save(buffer, "PNG", optimize=True)
         return buffer
 
-    if ext.endswith('.webp'):
+    if ext.endswith(".webp"):
         buffer = BytesIO()
-        img.save(buffer, 'WEBP', quality=quality, method=4)
+        img.save(buffer, "WEBP", quality=quality, method=4)
         return buffer
 
     # JPEG (et autres formats raster) : aplatissement + ré-encodage JPEG.
     if has_alpha:
-        background = Image.new('RGB', img.size, (255, 255, 255))
+        background = Image.new("RGB", img.size, (255, 255, 255))
         background.paste(img, mask=img.split()[-1])
         img = background
     else:
-        img = img.convert('RGB')
+        img = img.convert("RGB")
 
     buffer = BytesIO()
-    img.save(buffer, 'JPEG', quality=quality, optimize=True, progressive=True)
+    img.save(buffer, "JPEG", quality=quality, optimize=True, progressive=True)
     return buffer

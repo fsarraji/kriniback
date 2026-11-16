@@ -23,105 +23,122 @@ import os
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-*yw43y0h-djudg-s3k(p1h8_9!811fia!j3#)rhi$zk@^l#9m4')
+# DEBUG désactivé par défaut ; en local : DJANGO_DEBUG=true
+DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in ("true", "1", "yes")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-dev-only-key"
+    else:
+        from django.core.exceptions import ImproperlyConfigured
 
-ALLOWED_HOSTS = ['*']
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY est obligatoire hors DEBUG.")
+
+
+def _env_list(name, default=""):
+    return [v.strip() for v in os.getenv(name, default).split(",") if v.strip()]
+
+
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1],.onrender.com"
+)
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # مكتبات خارجية
-    'rest_framework',
-    'corsheaders',
-    
+    "rest_framework",
+    "corsheaders",
     # تطبيقاتنا
-    'agency',
-    'fleet',
-    'clients',
-    'contracts',
-    'payments',
-    'expenses',
-    'django_filters',
-    'storages',
+    "agency",
+    "fleet",
+    "clients",
+    "contracts",
+    "payments",
+    "expenses",
+    "health",
+    "django_filters",
+    "storages",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'car_rental_backend.urls'
+ROOT_URLCONF = "car_rental_backend.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'car_rental_backend.wsgi.application'
+WSGI_APPLICATION = "car_rental_backend.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 try:
     import dj_database_url
+
     DATABASES = {
-        'default': dj_database_url.config(
-            default=os.getenv('DATABASE_URL'),
+        "default": dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
             conn_max_age=600,
             conn_health_checks=True,
         )
     }
 except ImportError:
-    DATABASES = {'default': None}
+    DATABASES = {"default": None}
 
-if not DATABASES.get('default'):
+if not DATABASES.get("default"):
     # Check if we have Supabase credentials
-    db_pass = os.getenv('DB_PASSWORD')
+    db_pass = os.getenv("DB_PASSWORD")
     if db_pass:
-        DATABASES['default'] = {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'postgres',
-            'USER': 'postgres.gojkevxwwoimalftpuzg',
-            'PASSWORD': db_pass,
-            'HOST': 'aws-1-eu-central-1.pooler.supabase.com',
-            'PORT': '6543',
+        DATABASES["default"] = {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "postgres",
+            "USER": "postgres.gojkevxwwoimalftpuzg",
+            "PASSWORD": db_pass,
+            "HOST": "aws-1-eu-central-1.pooler.supabase.com",
+            "PORT": "6543",
         }
     else:
         # Fallback to local SQLite if no remote DB is configured
-        DATABASES['default'] = {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        DATABASES["default"] = {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
 
 
@@ -130,16 +147,16 @@ if not DATABASES.get('default'):
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -147,9 +164,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -159,106 +176,173 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-CORS_ALLOW_ALL_ORIGINS = True # في مرحلة الإنتاج سنحدد النطاقات المسموحة فقط
+STATIC_URL = "static/"
+# Origines autorisées : CORS_ALLOWED_ORIGINS="https://a.com,https://b.com"
+CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOWED_ORIGIN_REGEXES = _env_list("CORS_ALLOWED_ORIGIN_REGEXES")
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS")
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'kricar-pdf',
-    },
-}
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Cache partagé : requis pour que le throttling (et le cache) soit cohérent dès que
+# plusieurs workers/instances tournent. REDIS_URL active Redis ; sinon LocMem
+# (suffisant pour 1 worker : voir `--workers 1` dans le Dockerfile).
+_REDIS_URL = os.getenv("REDIS_URL", "").strip()
+if _REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+        },
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "kricar-pdf",
+        },
+    }
 # إخبار جانغو أننا نستخدم نموذج مستخدم مخصص بدل الافتراضي
-AUTH_USER_MODEL = 'agency.CustomUser'
+AUTH_USER_MODEL = "agency.CustomUser"
 # 1. إخبار Django REST Framework باستخدام JWT كوسيلة أساسية للمصادقة
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'agency.authentication.SubscriptionJWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "agency.authentication.SubscriptionJWTAuthentication",
     ),
-    'DEFAULT_FILTER_BACKENDS':[
-        'django_filters.rest_framework.DjangoFilterBackend',
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'car_rental_backend.pagination.StandardPagination',
-    'PAGE_SIZE': 20,
+    "DEFAULT_PAGINATION_CLASS": "car_rental_backend.pagination.StandardPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "public_write": "20/hour",
+        "login": "30/minute",
+    },
 }
 
-PDF_SERVICE_URL = os.getenv('PDF_SERVICE_URL', 'http://localhost:8001')
+PDF_SERVICE_URL = os.getenv("PDF_SERVICE_URL", "http://localhost:8001")
+# true : PDF générés en thread dans le process web ; false : worker durable
+# (python manage.py process_pdf_jobs --loop).
+PDF_JOBS_INLINE = os.getenv("PDF_JOBS_INLINE", "true").lower() in ("true", "1", "yes")
+
+# Évite 17 warnings W042 et uniformise le type de clé primaire existant.
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "std": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}
+    },
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "std"}},
+    "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
+}
+
+# Sentry optionnel (pip install sentry-sdk ; SENTRY_DSN en variable d'env.)
+if os.getenv("SENTRY_DSN"):
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=os.getenv("SENTRY_DSN"),
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0")),
+            send_default_pii=False,
+        )
+    except ImportError:
+        pass
 
 # Configuration du serveur Traccar (suivi GPS des véhicules)
 # Exemple : TRACCAR_URL=http://localhost:8082, TRACCAR_USER=admin, TRACCAR_PASSWORD=admin
-TRACCAR_URL = os.getenv('TRACCAR_URL', 'http://localhost:8082').rstrip('/')
-TRACCAR_USER = os.getenv('TRACCAR_USER', '')
-TRACCAR_PASSWORD = os.getenv('TRACCAR_PASSWORD', '')
+TRACCAR_URL = os.getenv("TRACCAR_URL", "http://localhost:8082").rstrip("/")
+TRACCAR_USER = os.getenv("TRACCAR_USER", "")
+TRACCAR_PASSWORD = os.getenv("TRACCAR_PASSWORD", "")
 
 # 2. إعدادات مكتبة SimpleJWT (تحديد مدة صلاحية التوكن)
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60), # التوكن يعيش لمدة ساعة (للأمان)
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),    # توكن التجديد يعيش لـ 7 أيام (كي لا يضطر الموظف لتسجيل الدخول كل يوم)
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),  # التوكن يعيش لمدة ساعة (للأمان)
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=7
+    ),  # توكن التجديد يعيش لـ 7 أيام (كي لا يضطر الموظف لتسجيل الدخول كل يوم)
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 # Email (SMTP)
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = os.getenv('EMAIL_HOST', '')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'true').lower() in ('true', '1', 'yes')
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'false').lower() in ('true', '1', 'yes')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@krinibooking.com')
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() in ("true", "1", "yes")
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() in ("true", "1", "yes")
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@krinibooking.com"
+)
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
 
 # إعدادات Supabase Storage (S3 Compatible)
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
 
 # Endpoint URL من Supabase: https://<PROJECT_REF>.supabase.co/storage/v1/s3
-AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
-AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1') # حدد المنطقة إذا لزم الأمر
+AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
+AWS_S3_REGION_NAME = os.getenv(
+    "AWS_S3_REGION_NAME", "eu-central-1"
+)  # حدد المنطقة إذا لزم الأمر
 
 # إذا تم توفير إعدادات S3، نستخدم django-storages
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     # Use django-storages with S3 backend
     # Django >= 5.1 : STORAGES['default'] est la config canonique (DEFAULT_FILE_STORAGE est legacy/ignoré)
-    DEFAULT_FILE_STORAGE = 'car_rental_backend.storage.OptimizedS3Storage'
+    DEFAULT_FILE_STORAGE = "car_rental_backend.storage.OptimizedS3Storage"
     STORAGES = {
-        'default': {'BACKEND': DEFAULT_FILE_STORAGE},
-        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+        "default": {"BACKEND": DEFAULT_FILE_STORAGE},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
     }
-    
+
     # Supabase S3 Specifics
-    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-central-1')
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "eu-central-1")
     AWS_S3_FILE_OVERWRITE = False
-    
+
     # IMPORTANT: Set to False for public buckets to get clean URLs
     AWS_QUERYSTRING_AUTH = False
-    
+
     # Metadata for uploaded files
     AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'max-age=86400',
+        "CacheControl": "max-age=86400",
     }
-    
+
     # Networking specifics
-    AWS_S3_URL_PROTOCOL = 'https:'
-    AWS_S3_ADDRESSING_STYLE = 'path'
-    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_URL_PROTOCOL = "https:"
+    AWS_S3_ADDRESSING_STYLE = "path"
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
 
     # Public URL for images (readable bucket) — e.g. <ref>.supabase.co/storage/v1/object/public/<bucket>
-    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN') or (
+    AWS_S3_CUSTOM_DOMAIN = os.getenv("AWS_S3_CUSTOM_DOMAIN") or (
         f"{AWS_S3_ENDPOINT_URL.replace('https://', '').replace('/storage/v1/s3', '')}"
         f"/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
     )
 else:
     # Fallback to local storage (optimise aussi les images à l'écriture)
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
     STORAGES = {
-        'default': {'BACKEND': 'car_rental_backend.storage.OptimizedFileSystemStorage'},
-        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+        "default": {"BACKEND": "car_rental_backend.storage.OptimizedFileSystemStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
     }
-

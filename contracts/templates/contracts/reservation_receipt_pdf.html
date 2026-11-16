@@ -8,7 +8,7 @@
     size: A5 landscape;
     margin: 6mm;
   }
-  
+
   :root {
     --primary: #111827;
     --gray-bold: #374151;
@@ -20,7 +20,7 @@
   }
 
   * { box-sizing: border-box; }
-  
+
   body {
     font-family: 'Inter', Arial, sans-serif;
     color: var(--primary);
@@ -37,7 +37,7 @@
 
   table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
   td, th { vertical-align: top; }
-  
+
   /* HEADER */
   .header {
     display: block;
@@ -59,7 +59,7 @@
     line-height: 1.3;
   }
   .brand-details strong { color: var(--gray-bold); font-weight: 600; }
-  
+
   .receipt-id {
     font-size: 14px;
     font-weight: 700;
@@ -71,7 +71,7 @@
     border: 1px dashed var(--gray-bold);
     display: inline-block;
   }
-  
+
   /* TITLE */
   .receipt-title {
     text-align: center;
@@ -221,7 +221,7 @@
         <div class="kv-item"><span class="kv-label">Téléphone</span><span class="kv-value">{{ contract.client.telephone|default:"-" }}</span></div>
       </div>
     </div>
-    
+
     <!-- VEHICULE -->
     <div class="card">
       <div class="card-header">2. Véhicule Réservé</div>

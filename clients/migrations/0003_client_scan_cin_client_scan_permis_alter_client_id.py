@@ -4,25 +4,36 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('clients', '0002_client_date_expiration_cin_client_nationalite_and_more'),
+        ("clients", "0002_client_date_expiration_cin_client_nationalite_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='client',
-            name='scan_cin',
-            field=models.ImageField(blank=True, null=True, upload_to='clients_documents/cin/', verbose_name='صورة البطاقة الوطنية/الجواز'),
+            model_name="client",
+            name="scan_cin",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to="clients_documents/cin/",
+                verbose_name="صورة البطاقة الوطنية/الجواز",
+            ),
         ),
         migrations.AddField(
-            model_name='client',
-            name='scan_permis',
-            field=models.ImageField(blank=True, null=True, upload_to='clients_documents/permis/', verbose_name='صورة رخصة السياقة'),
+            model_name="client",
+            name="scan_permis",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to="clients_documents/permis/",
+                verbose_name="صورة رخصة السياقة",
+            ),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="client",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
     ]

@@ -4,20 +4,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0001_initial'),
+        ("agency", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agency',
-            name='ice',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='رقم التعريف الموحد (ICE)'),
+            model_name="agency",
+            name="ice",
+            field=models.CharField(
+                blank=True,
+                max_length=50,
+                null=True,
+                verbose_name="رقم التعريف الموحد (ICE)",
+            ),
         ),
         migrations.AddField(
-            model_name='agency',
-            name='rc',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='الرقم التجاري (RC)'),
+            model_name="agency",
+            name="rc",
+            field=models.CharField(
+                blank=True, max_length=50, null=True, verbose_name="الرقم التجاري (RC)"
+            ),
         ),
     ]

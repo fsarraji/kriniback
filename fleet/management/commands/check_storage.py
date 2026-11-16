@@ -1,10 +1,10 @@
-from django.core.management.base import BaseCommand
+import os
+import uuid
+
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-
-import os
-import uuid
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
@@ -16,22 +16,30 @@ class Command(BaseCommand):
             f"Backend actif (default_storage) : "
             f"{default_storage.__class__.__module__}.{default_storage.__class__.__name__}"
         )
-        self.stdout.write(f"MEDIA_URL  : {getattr(settings, 'MEDIA_URL', '(non défini -> S3)')}")
-        self.stdout.write(f"MEDIA_ROOT : {getattr(settings, 'MEDIA_ROOT', '(non défini -> S3)')}")
+        self.stdout.write(
+            f"MEDIA_URL  : {getattr(settings, 'MEDIA_URL', '(non défini -> S3)')}"
+        )
+        self.stdout.write(
+            f"MEDIA_ROOT : {getattr(settings, 'MEDIA_ROOT', '(non défini -> S3)')}"
+        )
 
         has_s3 = bool(
-            os.getenv('AWS_ACCESS_KEY_ID')
-            and os.getenv('AWS_SECRET_ACCESS_KEY')
-            and os.getenv('AWS_STORAGE_BUCKET_NAME')
+            os.getenv("AWS_ACCESS_KEY_ID")
+            and os.getenv("AWS_SECRET_ACCESS_KEY")
+            and os.getenv("AWS_STORAGE_BUCKET_NAME")
         )
-        self.stdout.write(f"Variables S3/Supabase définies : {'OUI' if has_s3 else 'NON'}")
+        self.stdout.write(
+            f"Variables S3/Supabase définies : {'OUI' if has_s3 else 'NON'}"
+        )
         if has_s3:
-            bucket = os.getenv('AWS_STORAGE_BUCKET_NAME')
-            endpoint = os.getenv('AWS_S3_ENDPOINT_URL')
+            bucket = os.getenv("AWS_STORAGE_BUCKET_NAME")
+            endpoint = os.getenv("AWS_S3_ENDPOINT_URL")
             self.stdout.write(f"  AWS_STORAGE_BUCKET_NAME : {bucket}")
             self.stdout.write(f"  AWS_S3_ENDPOINT_URL     : {endpoint}")
             if bucket and endpoint:
-                self.stdout.write(f"  Console Supabase        : https://supabase.com/dashboard/project/{bucket.split('-')[0]}/storage/buckets")
+                self.stdout.write(
+                    f"  Console Supabase        : https://supabase.com/dashboard/project/{bucket.split('-')[0]}/storage/buckets"
+                )
 
         self.stdout.write("")
         self.stdout.write("=== Test d'écriture réel ===")
@@ -45,7 +53,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Fichier test supprimé (cleanup OK)."))
             self.stdout.write("")
             if has_s3:
-                self.stdout.write(self.style.SUCCESS("=> Stockage actif : SUPABASE STORAGE (S3). Les images persisteront."))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        "=> Stockage actif : SUPABASE STORAGE (S3). Les images persisteront."
+                    )
+                )
             else:
                 self.stdout.write(
                     self.style.WARNING(
@@ -55,4 +67,6 @@ class Command(BaseCommand):
                     )
                 )
         except Exception as exc:
-            self.stdout.write(self.style.ERROR(f"Erreur lors du test d'écriture : {exc}"))
+            self.stdout.write(
+                self.style.ERROR(f"Erreur lors du test d'écriture : {exc}")
+            )

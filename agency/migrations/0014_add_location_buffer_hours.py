@@ -4,15 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0013_subscription'),
+        ("agency", "0013_subscription"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agency',
-            name='location_buffer_hours',
-            field=models.DecimalField(decimal_places=0, default=2, help_text="Heures d'indisponibilité supplémentaires avant et après chaque location.", max_digits=4, verbose_name='Délai de confort (heures)'),
+            model_name="agency",
+            name="location_buffer_hours",
+            field=models.DecimalField(
+                decimal_places=0,
+                default=2,
+                help_text="Heures d'indisponibilité supplémentaires avant et après chaque location.",
+                max_digits=4,
+                verbose_name="Délai de confort (heures)",
+            ),
         ),
     ]

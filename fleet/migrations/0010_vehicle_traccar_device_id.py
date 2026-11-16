@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('fleet', '0009_alter_vehicle_image'),
+        ("fleet", "0009_alter_vehicle_image"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='vehicle',
-            name='traccar_device_id',
-            field=models.BigIntegerField(blank=True, null=True, verbose_name='ID dispositif Traccar'),
+            model_name="vehicle",
+            name="traccar_device_id",
+            field=models.BigIntegerField(
+                blank=True, null=True, verbose_name="ID dispositif Traccar"
+            ),
         ),
     ]

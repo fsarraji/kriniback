@@ -5,40 +5,78 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('fleet', '0002_vehicle_chauffeur_disponible'),
+        ("fleet", "0002_vehicle_chauffeur_disponible"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Brand',
+            name="Brand",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='اسم العلامة التجارية')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=100, unique=True, verbose_name="اسم العلامة التجارية"
+                    ),
+                ),
             ],
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='marque',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='fleet.brand', verbose_name='العلامة التجارية'),
+            model_name="vehicle",
+            name="marque",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="fleet.brand",
+                verbose_name="العلامة التجارية",
+            ),
         ),
         migrations.CreateModel(
-            name='ModelCar',
+            name="ModelCar",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, verbose_name='اسم الموديل')),
-                ('brand', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='models', to='fleet.brand', verbose_name='العلامة التجارية')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, verbose_name="اسم الموديل")),
+                (
+                    "brand",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="models",
+                        to="fleet.brand",
+                        verbose_name="العلامة التجارية",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'موديل السيارة',
-                'verbose_name_plural': 'موديلات السيارات',
-                'unique_together': {('brand', 'name')},
+                "verbose_name": "موديل السيارة",
+                "verbose_name_plural": "موديلات السيارات",
+                "unique_together": {("brand", "name")},
             },
         ),
         migrations.AlterField(
-            model_name='vehicle',
-            name='modele',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='fleet.modelcar', verbose_name='الموديل'),
+            model_name="vehicle",
+            name="modele",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="fleet.modelcar",
+                verbose_name="الموديل",
+            ),
         ),
     ]

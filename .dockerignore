@@ -20,3 +20,8 @@ venv/
 
 # Static / Media (depending on strategy, but usually keep these if not using external storage)
 # media/
+
+# Logs / fichiers locaux
+*.log
+*.backup
+backend_report.md

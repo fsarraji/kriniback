@@ -57,9 +57,7 @@ def _auth(agency=None):
 
 def _request(method, path, params=None, json=None, timeout=10, agency=None):
     if not is_configured(agency):
-        raise TraccarNotConfigured(
-            "Traccar n'est pas configuré pour cette agence."
-        )
+        raise TraccarNotConfigured("Traccar n'est pas configuré pour cette agence.")
     url, _, _ = _credentials(agency)
     url = f"{url}/api{path}"
     try:
@@ -103,7 +101,10 @@ def get_device_position(device_id, agency=None):
     Utilise GET /api/positions?deviceId=... (l'ancien endpoint
     /api/positions/device/{id} est absent sur les versions récentes de Traccar).
     """
-    positions = _request("GET", "/positions", params={"deviceId": device_id}, agency=agency) or []
+    positions = (
+        _request("GET", "/positions", params={"deviceId": device_id}, agency=agency)
+        or []
+    )
     return positions[-1] if positions else None
 
 
@@ -113,7 +114,9 @@ def create_device(name, unique_id, agency=None):
     Retourne un dict {id, name, uniqueId, status, ...}. Le champ uniqueId
     (IMEI du périphérique GPS) doit être unique côté Traccar.
     """
-    return _request("POST", "/devices", json={"name": name, "uniqueId": unique_id}, agency=agency)
+    return _request(
+        "POST", "/devices", json={"name": name, "uniqueId": unique_id}, agency=agency
+    )
 
 
 def update_device(device_id, name=None, unique_id=None, agency=None):
@@ -131,7 +134,9 @@ def delete_device(device_id, agency=None):
     return _request("DELETE", f"/devices/{device_id}", agency=agency)
 
 
-def update_device_accumulators(device_id, total_distance_m=None, hours=None, agency=None):
+def update_device_accumulators(
+    device_id, total_distance_m=None, hours=None, agency=None
+):
     """Corrige le total kilométrique (odomètre) et/ou les heures moteur d'un dispositif.
 
     Utilise l'endpoint officiel Traccar PUT /api/devices/{id}/accumulators qui met à
@@ -143,22 +148,32 @@ def update_device_accumulators(device_id, total_distance_m=None, hours=None, age
         payload["totalDistance"] = total_distance_m
     if hours is not None:
         payload["hours"] = hours
-    return _request("PUT", f"/devices/{device_id}/accumulators", json=payload, agency=agency)
+    return _request(
+        "PUT", f"/devices/{device_id}/accumulators", json=payload, agency=agency
+    )
 
 
 def get_route(device_id, from_iso, to_iso, agency=None):
     """Historique de route d'un dispositif entre deux dates ISO. [position, ...]"""
-    return _request(
-        "GET",
-        "/reports/route",
-        params={"deviceId": device_id, "from": from_iso, "to": to_iso},
-        agency=agency,
-    ) or []
+    return (
+        _request(
+            "GET",
+            "/reports/route",
+            params={"deviceId": device_id, "from": from_iso, "to": to_iso},
+            agency=agency,
+        )
+        or []
+    )
 
 
 def get_command_types(device_id, agency=None):
     """Commandes supportées par le protocole du dispositif. Ex: [{type: 'engineStop'}, ...]"""
-    return _request("GET", "/commands/types", params={"deviceId": device_id}, agency=agency) or []
+    return (
+        _request(
+            "GET", "/commands/types", params={"deviceId": device_id}, agency=agency
+        )
+        or []
+    )
 
 
 def send_command(device_id, command_type, attributes=None, agency=None):
@@ -174,7 +189,9 @@ def send_command(device_id, command_type, attributes=None, agency=None):
 
 def positions_by_device(agency=None):
     """Dictionnaire {device_id: position} à partir de la liste des dernières positions."""
-    return {p.get("deviceId"): p for p in get_positions(agency=agency) if p.get("deviceId")}
+    return {
+        p.get("deviceId"): p for p in get_positions(agency=agency) if p.get("deviceId")
+    }
 
 
 def _position_has_fix(position):

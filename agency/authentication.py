@@ -1,19 +1,20 @@
-from datetime import date
-
+from django.utils import timezone
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
-from django.utils import timezone
-
 
 def agency_has_active_subscription(agency_id):
-    """Une agence est autorisée si elle a au moins un abonnement ACTIVE dans sa période de validité."""
+    (
+        "Une agence est autorisée si elle a au moins "
+        "un abonnement ACTIVE dans sa période de validité."
+    )
     if not agency_id:
         return True
     from .models import Subscription
+
     return Subscription.objects.filter(
         agency_id=agency_id,
-        status='ACTIVE',
+        status="ACTIVE",
         start_date__lte=timezone.localdate(),
         end_date__gte=timezone.localdate(),
     ).exists()

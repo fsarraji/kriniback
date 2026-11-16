@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>{{ doc_type }} {{ number }}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  body { font-family: Arial, sans-serif; color: #111827; font-size: 12px; line-height: 1.4; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { vertical-align: top; }
+  .head td { padding-bottom: 14px; }
+  .agency-name { font-size: 18px; font-weight: bold; }
+  .muted { color: #6b7280; }
+  .doc-title { font-size: 24px; font-weight: bold; text-align: right; letter-spacing: 1px; }
+  .box { border: 1px solid #d1d5db; padding: 8px 10px; }
+  .items th { background: #f3f4f6; text-align: left; padding: 7px 8px; border: 1px solid #d1d5db; font-size: 11px; text-transform: uppercase; }
+  .items td { padding: 8px; border: 1px solid #d1d5db; }
+  .right { text-align: right; }
+  .totals { width: 45%; margin-left: 55%; margin-top: 14px; }
+  .totals td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; }
+  .totals .grand td { font-weight: bold; font-size: 14px; border-top: 2px solid #111827; border-bottom: none; }
+  .foot { margin-top: 30px; font-size: 10px; color: #6b7280; border-top: 1px solid #d1d5db; padding-top: 8px; }
+</style>
+</head>
+<body>
+  <table class="head">
+    <tr>
+      <td style="width:60%">
+        <div class="agency-name">{{ agency.nom_agence }}</div>
+        <div class="muted">{{ agency.adresse }}{% if agency.ville %}, {{ agency.ville }}{% endif %}</div>
+        <div class="muted">Tél : {{ agency.telephone }}{% if agency.email %} · {{ agency.email }}{% endif %}</div>
+        <div class="muted">RC : {{ agency.rc|default:"-" }} · ICE : {{ agency.ice|default:"-" }}</div>
+      </td>
+      <td>
+        <div class="doc-title">{{ doc_type }}</div>
+        <div class="right"><strong>N° {{ number }}</strong></div>
+        <div class="right muted">Date : {{ date|date:"d/m/Y" }}</div>
+        {% if doc_type == "AVOIR" %}<div class="right muted">Facture liée : {{ invoice.number }}</div>{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <div class="box" style="margin-bottom:16px">
+    <strong>Client</strong><br>
+    {{ client.prenom }} {{ client.nom }}<br>
+    {% if client.cin_passport %}CIN/Passeport : {{ client.cin_passport }}<br>{% endif %}
+    {% if client.telephone %}Tél : {{ client.telephone }}<br>{% endif %}
+    {% if client.adresse %}{{ client.adresse }}{% endif %}
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th>Désignation</th><th class="right">Montant HT</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          {% if doc_type == "AVOIR" %}Avoir sur facture {{ invoice.number }}{% else %}Location de véhicule{% endif %}
+          — {{ contract.vehicle.display_name }} ({{ contract.vehicle.matricule }})<br>
+          <span class="muted">Contrat n° {{ contract.id }} · du {{ contract.date_sortie|date:"d/m/Y H:i" }} au {{ contract.date_retour_prevue|date:"d/m/Y H:i" }} ({{ contract.jours }} jour{{ contract.jours|pluralize }})</span>
+          {% if reason %}<br><span class="muted">{{ reason }}</span>{% endif %}
+        </td>
+        <td class="right">{{ ht }} MAD</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Total HT</td><td class="right">{{ ht }} MAD</td></tr>
+    <tr><td>TVA ({{ tva_rate }} %)</td><td class="right">{{ tva }} MAD</td></tr>
+    <tr class="grand"><td>Total TTC</td><td class="right">{{ ttc }} MAD</td></tr>
+    {% if doc_type == "FACTURE" %}
+    <tr><td>Déjà payé</td><td class="right">{{ paid }} MAD</td></tr>
+    <tr><td>Reste à payer</td><td class="right">{{ reste }} MAD</td></tr>
+    {% endif %}
+  </table>
+
+  <div class="foot">
+    {{ agency.nom_agence }} — RC {{ agency.rc|default:"-" }} — ICE {{ agency.ice|default:"-" }}.
+    Document généré par Krini.
+  </div>
+</body>
+</html>

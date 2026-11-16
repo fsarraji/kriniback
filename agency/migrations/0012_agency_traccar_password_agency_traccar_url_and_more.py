@@ -4,25 +4,39 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0011_alter_agency_cachet_signature_alter_agency_logo'),
+        ("agency", "0011_alter_agency_cachet_signature_alter_agency_logo"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agency',
-            name='traccar_password',
-            field=models.CharField(blank=True, max_length=200, null=True, verbose_name='Mot de passe Traccar'),
+            model_name="agency",
+            name="traccar_password",
+            field=models.CharField(
+                blank=True,
+                max_length=200,
+                null=True,
+                verbose_name="Mot de passe Traccar",
+            ),
         ),
         migrations.AddField(
-            model_name='agency',
-            name='traccar_url',
-            field=models.CharField(blank=True, max_length=200, null=True, verbose_name='URL serveur Traccar'),
+            model_name="agency",
+            name="traccar_url",
+            field=models.CharField(
+                blank=True,
+                max_length=200,
+                null=True,
+                verbose_name="URL serveur Traccar",
+            ),
         ),
         migrations.AddField(
-            model_name='agency',
-            name='traccar_username',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Utilisateur Traccar'),
+            model_name="agency",
+            name="traccar_username",
+            field=models.CharField(
+                blank=True,
+                max_length=100,
+                null=True,
+                verbose_name="Utilisateur Traccar",
+            ),
         ),
     ]

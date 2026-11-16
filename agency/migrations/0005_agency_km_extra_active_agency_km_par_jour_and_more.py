@@ -4,25 +4,31 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0004_agency_caution_active_agency_caution_montant_and_more'),
+        ("agency", "0004_agency_caution_active_agency_caution_montant_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agency',
-            name='km_extra_active',
-            field=models.BooleanField(default=True, verbose_name='Facturation km extra active'),
+            model_name="agency",
+            name="km_extra_active",
+            field=models.BooleanField(
+                default=True, verbose_name="Facturation km extra active"
+            ),
         ),
         migrations.AddField(
-            model_name='agency',
-            name='km_par_jour',
-            field=models.IntegerField(default=250, verbose_name='Km inclus par jour'),
+            model_name="agency",
+            name="km_par_jour",
+            field=models.IntegerField(default=250, verbose_name="Km inclus par jour"),
         ),
         migrations.AddField(
-            model_name='agency',
-            name='km_tarif_extra_defaut',
-            field=models.DecimalField(decimal_places=2, default=1.5, max_digits=6, verbose_name='Tarif DH par km supplémentaire (défaut)'),
+            model_name="agency",
+            name="km_tarif_extra_defaut",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=1.5,
+                max_digits=6,
+                verbose_name="Tarif DH par km supplémentaire (défaut)",
+            ),
         ),
     ]

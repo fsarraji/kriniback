@@ -12,11 +12,15 @@ def create_gps_devices(apps, schema_editor):
     GpsDevice par (agence, dispositif), lié au premier véhicule (plus petit id) ;
     les autres véhicules restent sans dispositif.
     """
-    Vehicle = apps.get_model('fleet', 'Vehicle')
-    GpsDevice = apps.get_model('fleet', 'GpsDevice')
+    Vehicle = apps.get_model("fleet", "Vehicle")
+    GpsDevice = apps.get_model("fleet", "GpsDevice")
     GpsDevice.objects.all().delete()
     seen = set()
-    for vehicle in Vehicle.objects.exclude(traccar_device_id__isnull=True).order_by('id').iterator():
+    for vehicle in (
+        Vehicle.objects.exclude(traccar_device_id__isnull=True)
+        .order_by("id")
+        .iterator()
+    ):
         key = (vehicle.agency_id, vehicle.traccar_device_id)
         if key in seen:
             continue
@@ -25,43 +29,100 @@ def create_gps_devices(apps, schema_editor):
             agency_id=vehicle.agency_id,
             vehicle=vehicle,
             traccar_device_id=vehicle.traccar_device_id,
-            name=vehicle.matricule or '',
-            unique_id=vehicle.gps_imei or '',
+            name=vehicle.matricule or "",
+            unique_id=vehicle.gps_imei or "",
         )
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0013_subscription'),
-        ('fleet', '0013_vehicle_is_deleted'),
+        ("agency", "0013_subscription"),
+        ("fleet", "0013_vehicle_is_deleted"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='GpsDevice',
+            name="GpsDevice",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('traccar_device_id', models.BigIntegerField(verbose_name='ID dispositif Traccar')),
-                ('name', models.CharField(blank=True, default='', max_length=200, verbose_name='Nom du dispositif')),
-                ('unique_id', models.CharField(blank=True, default='', max_length=100, verbose_name='ID / IMEI du dispositif GPS')),
-                ('status', models.CharField(blank=True, default='', max_length=20, verbose_name='Statut (online/offline)')),
-                ('last_update', models.DateTimeField(blank=True, null=True, verbose_name='Dernière mise à jour')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('agency', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='gps_devices', to='agency.agency', verbose_name='Agence')),
-                ('vehicle', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='gps_device', to='fleet.vehicle', verbose_name='Véhicule')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "traccar_device_id",
+                    models.BigIntegerField(verbose_name="ID dispositif Traccar"),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        max_length=200,
+                        verbose_name="Nom du dispositif",
+                    ),
+                ),
+                (
+                    "unique_id",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        max_length=100,
+                        verbose_name="ID / IMEI du dispositif GPS",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        max_length=20,
+                        verbose_name="Statut (online/offline)",
+                    ),
+                ),
+                (
+                    "last_update",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Dernière mise à jour"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "agency",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="gps_devices",
+                        to="agency.agency",
+                        verbose_name="Agence",
+                    ),
+                ),
+                (
+                    "vehicle",
+                    models.OneToOneField(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="gps_device",
+                        to="fleet.vehicle",
+                        verbose_name="Véhicule",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Dispositif GPS',
-                'verbose_name_plural': 'Dispositifs GPS',
-                'ordering': ['-created_at'],
-                'unique_together': {('agency', 'traccar_device_id')},
+                "verbose_name": "Dispositif GPS",
+                "verbose_name_plural": "Dispositifs GPS",
+                "ordering": ["-created_at"],
+                "unique_together": {("agency", "traccar_device_id")},
             },
         ),
         migrations.RunPython(create_gps_devices, migrations.RunPython.noop),
         migrations.RemoveField(
-            model_name='vehicle',
-            name='traccar_device_id',
+            model_name="vehicle",
+            name="traccar_device_id",
         ),
     ]

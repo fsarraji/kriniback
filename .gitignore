@@ -175,3 +175,9 @@ mock.pdf
 mock_final.pdf
 *.pdf
 !contracts/templates/**/*.html
+
+# Logs / rapports générés
+*.log
+*.backup
+backend_report.md
+contracts_error.txt

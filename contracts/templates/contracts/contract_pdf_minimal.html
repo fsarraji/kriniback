@@ -7,7 +7,7 @@
 <style>
   @page {
     size: A4;
-    margin: 7mm;
+    margin: 6mm 7mm;
   }
 
   :root {
@@ -28,8 +28,8 @@
     color: var(--text);
     background: #fff;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 9.5px;
-    line-height: 1.25;
+    font-size: 10.5px;
+    line-height: 1.35;
   }
 
   table {
@@ -37,12 +37,13 @@
     border-collapse: collapse;
   }
 
+  /* HEADER */
   .top {
     display: table;
     width: 100%;
     border-bottom: 2px solid var(--primary);
-    padding-bottom: 7px;
-    margin-bottom: 9px;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
   }
 
   .top-left,
@@ -51,14 +52,14 @@
     vertical-align: middle;
   }
 
-  .top-left { width: 65%; }
+  .top-left { width: 64%; }
   .top-right {
-    width: 35%;
+    width: 36%;
     text-align: right;
   }
 
   .brand {
-    font-size: 21px;
+    font-size: 23px;
     font-weight: 800;
     letter-spacing: -0.7px;
     color: var(--primary);
@@ -66,8 +67,8 @@
 
   .agency-meta {
     color: var(--muted);
-    font-size: 8.5px;
-    margin-top: 2px;
+    font-size: 9px;
+    margin-top: 3px;
   }
 
   .agency-meta strong {
@@ -76,48 +77,62 @@
 
   .contract-label {
     color: var(--muted);
-    font-size: 8px;
+    font-size: 8.5px;
     text-transform: uppercase;
     letter-spacing: 1px;
   }
 
   .contract-number {
     color: var(--primary);
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 800;
     margin: 1px 0;
   }
 
   .contract-date {
     color: var(--muted);
-    font-size: 8px;
+    font-size: 8.5px;
   }
 
+  .barcode {
+    width: 80px;
+    height: 22px;
+    object-fit: contain;
+    display: inline-block;
+    margin-top: 2px;
+  }
+
+  /* SECTIONS */
   .section {
-    margin-bottom: 7px;
+    margin-bottom: 9px;
     page-break-inside: avoid;
   }
 
   .section-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 9px;
+    display: table;
+    width: 100%;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: .8px;
     color: var(--primary);
     border-bottom: 1px solid var(--line);
-    padding-bottom: 3px;
-    margin-bottom: 4px;
+    padding-bottom: 4px;
+    margin-bottom: 5px;
+  }
+
+  .section-title > span {
+    display: table-cell;
   }
 
   .section-title .num {
     color: var(--accent);
+    padding-right: 6px;
   }
 
+  /* INFO TABLES */
   .info-table td {
-    padding: 3px 6px 3px 0;
+    padding: 3.5px 8px 3.5px 0;
     vertical-align: top;
     border-bottom: 1px dotted var(--light-line);
   }
@@ -128,15 +143,17 @@
 
   .label {
     color: var(--muted);
-    font-size: 8px;
+    font-size: 9px;
+    width: 44%;
   }
 
   .value {
     color: var(--primary);
     font-weight: 700;
-    font-size: 9.5px;
+    font-size: 10.5px;
   }
 
+  /* TWO COLUMNS */
   .two-col {
     display: table;
     width: 100%;
@@ -150,156 +167,75 @@
   }
 
   .col:first-child {
-    padding-right: 9px;
+    padding-right: 10px;
     border-right: 1px solid var(--light-line);
   }
 
   .col:last-child {
-    padding-left: 9px;
-  }
-
-  .vehicle-name {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 4px;
-  }
-
-  .vehicle-meta {
-    color: var(--muted);
-    font-size: 8.5px;
+    padding-left: 10px;
   }
 
   .driver-title {
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 800;
     color: var(--primary);
     text-transform: uppercase;
     letter-spacing: .5px;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
 
   .driver-extra {
-    margin-top: 5px;
-    padding-top: 5px;
+    margin-top: 6px;
+    padding-top: 6px;
     border-top: 1px solid var(--light-line);
   }
 
-  .timeline {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
-    border: 1px solid var(--line);
-  }
-
-  .timeline-cell {
-    display: table-cell;
-    width: 50%;
-    padding: 7px 9px;
-    vertical-align: top;
-  }
-
-  .timeline-cell + .timeline-cell {
-    border-left: 1px solid var(--line);
-  }
-
-  .timeline-title {
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: .6px;
-    color: var(--muted);
+  .vehicle-name {
+    font-size: 16px;
     font-weight: 800;
-    margin-bottom: 2px;
-  }
-
-  .timeline-date {
-    font-size: 10px;
-    font-weight: 800;
-    color: var(--primary);
-  }
-
-  .timeline-km {
-    margin-top: 4px;
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--primary);
-  }
-
-  .timeline-km span {
-    font-size: 7px;
-    color: var(--muted);
-    font-weight: 600;
-  }
-
-  .fuel {
-    margin-top: 3px;
-    color: var(--muted);
-    font-size: 8px;
-  }
-
-  .damage-table {
-    table-layout: fixed;
-  }
-
-  .damage-table td {
-    width: 50%;
-    vertical-align: top;
-    padding: 5px 8px 5px 0;
-  }
-
-  .damage-table td + td {
-    padding-left: 8px;
-    padding-right: 0;
-    border-left: 1px solid var(--light-line);
-  }
-
-  .damage-box {
-    min-height: 52px;
-  }
-
-  .damage-title {
-    font-size: 8px;
-    font-weight: 800;
-    text-transform: uppercase;
     color: var(--primary);
     margin-bottom: 3px;
   }
 
-  .damage-text {
+  .vehicle-meta {
     color: var(--muted);
-    font-size: 8.5px;
+    font-size: 9.5px;
+    margin-bottom: 7px;
   }
 
-  .diagram {
-    width: 72px;
-    height: 48px;
-    object-fit: contain;
-    float: left;
-    margin-right: 8px;
-    border: 1px solid var(--light-line);
+  .vehicle-meta strong {
+    color: var(--text);
   }
+
+  .equipment-block {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid var(--line);
+  }
+
+  .equipment-table { margin-top: 4px; }
 
   .equipment-table th {
     text-align: left;
-    padding: 3px 5px;
+    padding: 3.5px 6px;
     background: var(--soft);
     color: var(--muted);
-    font-size: 7.5px;
+    font-size: 8.5px;
     text-transform: uppercase;
     letter-spacing: .4px;
     border-bottom: 1px solid var(--line);
   }
 
   .equipment-table td {
-    padding: 3px 5px;
+    padding: 3.5px 6px;
     border-bottom: 1px solid var(--light-line);
-    font-size: 8.5px;
+    font-size: 9.5px;
   }
 
   .equipment-table th:not(:first-child),
   .equipment-table td:not(:first-child) {
     text-align: center;
-    width: 70px;
+    width: 76px;
   }
 
   .yes {
@@ -311,32 +247,176 @@
     color: var(--muted);
   }
 
-  .finance-layout {
+  /* TIMELINE */
+  .timeline {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border: 1px solid var(--line);
+  }
+
+  .timeline-cell {
+    display: table-cell;
+    width: 39%;
+    padding: 9px 11px;
+    vertical-align: top;
+  }
+
+  .timeline-cell + .timeline-cell {
+    border-left: 1px solid var(--line);
+  }
+
+  .timeline-mid {
+    width: 22%;
+    text-align: center;
+  }
+
+  .timeline-title {
+    font-size: 8.5px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--muted);
+    font-weight: 800;
+    margin-bottom: 3px;
+  }
+
+  .timeline-date {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--primary);
+  }
+
+  .timeline-duration {
+    font-size: 21px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-top: 2px;
+  }
+
+  .timeline-note {
+    margin-top: 5px;
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .km-fuel {
+    display: table;
+    width: 100%;
+    margin-top: 5px;
+  }
+
+  .km-fuel .km {
+    display: table-cell;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--primary);
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .km-fuel .km span {
+    display: block;
+    font-size: 7.5px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+
+  .km-fuel .fuel-img {
+    display: table-cell;
+    width: 56px;
+    vertical-align: middle;
+    text-align: right;
+  }
+
+  .km-fuel .fuel-img img {
+    width: 56px;
+    height: auto;
+    display: block;
+    margin-left: auto;
+  }
+
+  /* DAMAGES + FINANCE */
+  .state-layout {
     display: table;
     width: 100%;
     table-layout: fixed;
   }
 
-  .finance-left,
-  .finance-right {
+  .state-left,
+  .state-right {
     display: table-cell;
     vertical-align: top;
   }
 
-  .finance-left {
-    width: 64%;
+  .state-left {
+    width: 54%;
     padding-right: 12px;
   }
 
-  .finance-right {
-    width: 36%;
+  .state-right {
+    width: 46%;
     padding-left: 12px;
     border-left: 1px solid var(--light-line);
   }
 
+  .damage-cell {
+    margin-bottom: 10px;
+    page-break-inside: avoid;
+  }
+
+  .damage-title {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
+  .damage-row {
+    display: table;
+    width: 100%;
+  }
+
+  .diagram-cell {
+    display: table-cell;
+    width: 100px;
+    vertical-align: top;
+  }
+
+  .diagram {
+    width: 96px;
+    height: 62px;
+    object-fit: contain;
+    border: 1px solid var(--light-line);
+  }
+
+  .damage-text {
+    display: table-cell;
+    vertical-align: top;
+    padding-left: 8px;
+    color: var(--muted);
+    font-size: 9.5px;
+    line-height: 1.4;
+  }
+
+  /* FINANCE */
+  .finance-title {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
   .finance-table td {
-    padding: 3px 0;
+    padding: 4px 0;
     border-bottom: 1px dotted var(--light-line);
+  }
+
+  .finance-table td:first-child {
+    color: var(--muted);
   }
 
   .finance-table td:last-child {
@@ -346,57 +426,59 @@
 
   .finance-total {
     border-top: 2px solid var(--primary);
-    margin-top: 5px;
-    padding-top: 6px;
+    margin-top: 7px;
+    padding-top: 7px;
   }
 
   .finance-total-label {
     color: var(--muted);
-    font-size: 8px;
+    font-size: 9px;
     text-transform: uppercase;
     letter-spacing: .7px;
   }
 
   .finance-total-value {
     color: var(--primary);
-    font-size: 18px;
+    font-size: 21px;
     font-weight: 800;
     margin-top: 1px;
   }
 
   .km-note {
     color: var(--muted);
-    font-size: 7.5px;
-    margin-top: 3px;
+    font-size: 8.5px;
+    margin-top: 4px;
+    line-height: 1.4;
   }
 
+  /* SIGNATURES */
   .signatures {
     display: table;
     width: 100%;
     table-layout: fixed;
-    margin-top: 8px;
+    margin-top: 10px;
     page-break-inside: avoid;
   }
 
   .signature {
     display: table-cell;
     width: 50%;
-    height: 85px;
+    height: 115px;
     vertical-align: top;
     border-top: 1px solid var(--primary);
-    padding-top: 5px;
+    padding-top: 6px;
   }
 
   .signature:first-child {
-    padding-right: 15px;
+    padding-right: 14px;
   }
 
   .signature:last-child {
-    padding-left: 15px;
+    padding-left: 14px;
   }
 
   .signature-title {
-    font-size: 8px;
+    font-size: 9.5px;
     font-weight: 800;
     text-transform: uppercase;
     color: var(--primary);
@@ -404,30 +486,32 @@
 
   .signature-text {
     color: var(--muted);
-    font-size: 7.5px;
-    margin-top: 3px;
+    font-size: 9px;
+    margin-top: 4px;
+    line-height: 1.5;
   }
 
   .stamp {
     text-align: center;
-    height: 55px;
-    margin-top: 3px;
+    height: 66px;
+    margin-top: 5px;
   }
 
   .stamp img {
-    max-width: 100px;
-    max-height: 55px;
+    max-width: 110px;
+    max-height: 66px;
     object-fit: contain;
   }
 
+  /* FOOTER */
   .footer {
     border-top: 1px solid var(--line);
-    margin-top: 7px;
-    padding-top: 5px;
+    margin-top: 8px;
+    padding-top: 6px;
     display: table;
     width: 100%;
     color: var(--muted);
-    font-size: 7px;
+    font-size: 8px;
   }
 
   .footer-left,
@@ -437,33 +521,27 @@
 
   .footer-right {
     text-align: right;
+    vertical-align: middle;
   }
 
   .qr {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     object-fit: contain;
     vertical-align: middle;
-    margin-right: 6px;
+    margin-right: 7px;
   }
 
   .qr-wrap {
     display: inline-flex;
     align-items: center;
-    margin-right: 8px;
+    margin-right: 9px;
   }
 
   .qr-label {
     color: var(--muted);
-    font-size: 7px;
+    font-size: 7.5px;
     text-align: left;
-  }
-
-  .barcode {
-    width: 75px;
-    height: 20px;
-    object-fit: contain;
-    display: inline-block;
   }
 
   .muted {
@@ -505,9 +583,9 @@
   </div>
 </div>
 
-<!-- CLIENT + VEHICLE -->
+<!-- 01 CLIENT + VÉHICULE -->
 <div class="section">
-  <div class="section-title"><span class="num">01</span> Client & véhicule</div>
+  <div class="section-title"><span class="num">01</span><span>Client &amp; véhicule</span></div>
 
   <div class="two-col">
     <div class="col">
@@ -575,31 +653,43 @@
         {{ contract.vehicle.get_carburant_display|default:"—" }}
       </div>
 
-      <table class="info-table" style="margin-top:7px;">
-        <tr>
-          <td class="label">Véhicule</td>
-          <td class="value">{{ contract.vehicle.modele|default:"—" }}</td>
-        </tr>
-        <tr>
-          <td class="label">Immatriculation</td>
-          <td class="value">{{ contract.vehicle.matricule|default:"—" }}</td>
-        </tr>
-        <tr>
-          <td class="label">Couleur</td>
-          <td class="value">{{ contract.vehicle.couleur|default:"—" }}</td>
-        </tr>
-        <tr>
-          <td class="label">Carburant</td>
-          <td class="value">{{ contract.vehicle.get_carburant_display|default:"—" }}</td>
-        </tr>
-      </table>
+      <div class="equipment-block">
+        <div class="driver-title">Équipements inclus</div>
+        <table class="equipment-table">
+          <tr>
+            <th>Équipement</th>
+            <th>Départ</th>
+            <th>Retour</th>
+          </tr>
+          <tr>
+            <td>Roue de secours</td>
+            <td>{% if contract.roue_secours %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+            <td>{% if contract.roue_secours_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <td>Cric &amp; manivelle</td>
+            <td>{% if contract.cric %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+            <td>{% if contract.cric_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <td>Gilet &amp; extincteur</td>
+            <td>{% if contract.gilet %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+            <td>{% if contract.gilet_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <td>Papiers du véhicule</td>
+            <td>{% if contract.papiers %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+            <td>{% if contract.papiers_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
+          </tr>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- LOCATION -->
+<!-- 02 PÉRIODE -->
 <div class="section">
-  <div class="section-title"><span class="num">02</span> Période de location</div>
+  <div class="section-title"><span class="num">02</span><span>Période de location</span></div>
 
   <div class="timeline">
     <div class="timeline-cell">
@@ -607,13 +697,23 @@
       <div class="timeline-date">
         {{ contract.date_sortie|date:"d/m/Y - H:i"|default:"—" }}
       </div>
-      <div class="timeline-km">
-        {{ contract.km_sortie|default:"0" }} <span>KM</span>
+      <div class="km-fuel">
+        <div class="km">{{ contract.km_sortie|default:"0" }}<span>KM</span></div>
+        {% if fuel_depart_base64 %}
+          <div class="fuel-img"><img src="{{ fuel_depart_base64 }}" /></div>
+        {% endif %}
       </div>
-      {% if fuel_depart_base64 %}
-        <div class="fuel">Niveau carburant : voir jauge ci-dessous</div>
-        <img src="{{ fuel_depart_base64 }}" style="width:48px;height:auto;margin-top:2px;">
-      {% endif %}
+    </div>
+
+    <div class="timeline-cell timeline-mid">
+      <div class="timeline-title">Durée</div>
+      <div class="timeline-duration">{{ contract.jours|default:"0" }}</div>
+      <div class="timeline-note">
+        jours de location
+        {% if km_parcourus is not None %}
+          <br>{{ km_parcourus }} km parcourus
+        {% endif %}
+      </div>
     </div>
 
     <div class="timeline-cell">
@@ -625,88 +725,59 @@
           {{ contract.date_retour_prevue|date:"d/m/Y - H:i"|default:"—" }} <span class="muted">(Prévu)</span>
         {% endif %}
       </div>
-      <div class="timeline-km">
-        {% if contract.km_retour %}
-          {{ contract.km_retour }} <span>KM</span>
-        {% else %}
-          <span style="font-size:9px;color:#6b7280;">En attente</span>
+      <div class="km-fuel">
+        <div class="km">
+          {% if contract.km_retour %}
+            {{ contract.km_retour }}<span>KM</span>
+          {% else %}
+            <span style="font-size:9px;color:#6b7280;font-weight:600;">En attente</span>
+          {% endif %}
+        </div>
+        {% if fuel_retour_base64 %}
+          <div class="fuel-img"><img src="{{ fuel_retour_base64 }}" /></div>
         {% endif %}
       </div>
-      {% if fuel_retour_base64 %}
-        <div class="fuel">Niveau carburant : voir jauge ci-dessous</div>
-        <img src="{{ fuel_retour_base64 }}" style="width:48px;height:auto;margin-top:2px;">
-      {% endif %}
     </div>
   </div>
 </div>
 
-<!-- ETAT + EQUIPEMENTS -->
+<!-- 03 ÉTAT + FINANCE -->
 <div class="section">
-  <div class="section-title"><span class="num">03</span> État du véhicule</div>
+  <div class="section-title"><span class="num">03</span><span>État du véhicule &amp; bilan financier</span></div>
 
-  <table class="damage-table">
-    <tr>
-      <td>
-        <div class="damage-box">
-          {% if car_diagram_base64 %}
-            <img class="diagram" src="{{ car_diagram_base64 }}">
-          {% endif %}
-          <div class="damage-title">Départ</div>
+  <div class="state-layout">
+    <div class="state-left">
+      <div class="damage-cell">
+        <div class="damage-title">Départ</div>
+        <div class="damage-row">
+          <div class="diagram-cell">
+            {% if car_diagram_base64 %}
+              <img class="diagram" src="{{ car_diagram_base64 }}" />
+            {% endif %}
+          </div>
           <div class="damage-text">
             {{ contract.degats_depart|default:"Aucun dégât signalé par l'agent ou le client." }}
           </div>
         </div>
-      </td>
+      </div>
 
-      <td>
-        <div class="damage-box">
-          {% if retour_diagram_base64 %}
-            <img class="diagram" src="{{ retour_diagram_base64 }}">
-          {% endif %}
-          <div class="damage-title">Retour</div>
+      <div class="damage-cell" style="margin-bottom:0;">
+        <div class="damage-title">Retour</div>
+        <div class="damage-row">
+          <div class="diagram-cell">
+            {% if retour_diagram_base64 %}
+              <img class="diagram" src="{{ retour_diagram_base64 }}" />
+            {% endif %}
+          </div>
           <div class="damage-text">
             {{ contract.degats_retour|default:"Non rempli - en attente du retour véhicule." }}
           </div>
         </div>
-      </td>
-    </tr>
-  </table>
+      </div>
+    </div>
 
-  <table class="equipment-table">
-    <tr>
-      <th>Équipement</th>
-      <th>Départ</th>
-      <th>Retour</th>
-    </tr>
-    <tr>
-      <td>Roue de secours</td>
-      <td>{% if contract.roue_secours %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-      <td>{% if contract.roue_secours_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-    </tr>
-    <tr>
-      <td>Cric & manivelle</td>
-      <td>{% if contract.cric %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-      <td>{% if contract.cric_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-    </tr>
-    <tr>
-      <td>Gilet & extincteur</td>
-      <td>{% if contract.gilet %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-      <td>{% if contract.gilet_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-    </tr>
-    <tr>
-      <td>Papiers du véhicule</td>
-      <td>{% if contract.papiers %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-      <td>{% if contract.papiers_retour %}<span class="yes">✓ Oui</span>{% else %}<span class="no">— Non</span>{% endif %}</td>
-    </tr>
-  </table>
-</div>
-
-<!-- FINANCE -->
-<div class="section">
-  <div class="section-title"><span class="num">04</span> Bilan financier</div>
-
-  <div class="finance-layout">
-    <div class="finance-left">
+    <div class="state-right">
+      <div class="finance-title">Bilan financier</div>
       <table class="finance-table">
         <tr>
           <td>Durée confirmée</td>
@@ -753,26 +824,26 @@
           <td>{{ contract.methode_paiement|default:"Espèce" }}</td>
         </tr>
       </table>
-    </div>
 
-    <div class="finance-right">
-      <div class="finance-total-label">Reste à payer</div>
-      <div class="finance-total-value">
-        {{ contract.reste_a_payer|floatformat:2|default:"0.00" }}
-        <span style="font-size:9px;">DH</span>
-      </div>
+      <div class="finance-total">
+        <div class="finance-total-label">Reste à payer</div>
+        <div class="finance-total-value">
+          {{ contract.reste_a_payer|floatformat:2|default:"0.00" }}
+          <span style="font-size:9px;">DH</span>
+        </div>
 
-      {% if agency_km_extra_active %}
-      <div class="km-note">
-        {{ agency_km_par_jour }} km/j inclus ·
-        {{ km_tarif_extra }} DH/km supplémentaire
+        {% if agency_km_extra_active %}
+        <div class="km-note">
+          {{ agency_km_par_jour }} km/j inclus ·
+          {{ km_tarif_extra }} DH/km supplémentaire
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
 </div>
 
-<!-- SIGNATURES -->
+<!-- 04 SIGNATURES -->
 <div class="signatures">
   <div class="signature">
     <div class="signature-title">Le locataire</div>
@@ -787,11 +858,11 @@
   </div>
 
   <div class="signature">
-    <div class="signature-title">Cachet & signature agence</div>
+    <div class="signature-title">Cachet &amp; signature agence</div>
     <div class="signature-text">
       {% if cachet_base64 %}
         <div class="stamp">
-          <img src="{{ cachet_base64 }}">
+          <img src="{{ cachet_base64 }}" />
         </div>
       {% else %}
         Véhicule confié par :
@@ -807,7 +878,7 @@
   <div class="footer-left">
     {% if whatsapp_qr_base64 %}
       <span class="qr-wrap">
-        <img class="qr" src="{{ whatsapp_qr_base64 }}">
+        <img class="qr" src="{{ whatsapp_qr_base64 }}" />
         <span class="qr-label">CONTACTEZ-NOUS<br>WhatsApp</span>
       </span>
     {% endif %}

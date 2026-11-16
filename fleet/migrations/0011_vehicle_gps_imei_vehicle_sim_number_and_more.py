@@ -4,25 +4,33 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('fleet', '0010_vehicle_traccar_device_id'),
+        ("fleet", "0010_vehicle_traccar_device_id"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='vehicle',
-            name='gps_imei',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='ID / IMEI du dispositif GPS'),
+            model_name="vehicle",
+            name="gps_imei",
+            field=models.CharField(
+                blank=True,
+                max_length=50,
+                null=True,
+                verbose_name="ID / IMEI du dispositif GPS",
+            ),
         ),
         migrations.AddField(
-            model_name='vehicle',
-            name='sim_number',
-            field=models.CharField(blank=True, max_length=30, null=True, verbose_name='Numéro carte SIM'),
+            model_name="vehicle",
+            name="sim_number",
+            field=models.CharField(
+                blank=True, max_length=30, null=True, verbose_name="Numéro carte SIM"
+            ),
         ),
         migrations.AddField(
-            model_name='vehicle',
-            name='sim_operator',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Opérateur télécom'),
+            model_name="vehicle",
+            name="sim_operator",
+            field=models.CharField(
+                blank=True, max_length=50, null=True, verbose_name="Opérateur télécom"
+            ),
         ),
     ]

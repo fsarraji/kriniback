@@ -8,7 +8,7 @@
     size: A4;
     margin: 5mm 5mm 5mm 5mm;
   }
-  
+
   :root {
     --primary: #111827;
     --gray-bold: #374151;
@@ -20,7 +20,7 @@
   }
 
   * { box-sizing: border-box; }
-  
+
   body {
     font-family: 'Inter', Arial, sans-serif;
     color: var(--primary);
@@ -37,7 +37,7 @@
 
   table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
   td, th { vertical-align: top; }
-  
+
   /* HEADER */
   .header {
     display: flex;
@@ -60,7 +60,7 @@
     line-height: 1.2;
   }
   .brand-details strong { color: var(--gray-bold); font-weight: 600; }
-  
+
   .contract-pill {
     background-color: var(--primary);
     color: white;
@@ -79,7 +79,7 @@
     letter-spacing: -0.5px;
     color: var(--primary);
   }
-  
+
   /* SECTIONS */
   .section-title {
     font-weight: 700;
@@ -187,11 +187,11 @@
     font-size: 11px;
   }
   .modern-table tr:last-child td { border-bottom: none; }
-  
+
   .badge { padding: 3px 6px; border-radius: 4px; font-size: 13px; font-weight: 700; text-transform: uppercase; }
   .badge-yes { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
   .badge-no { background: var(--gray-bg); color: var(--gray-text); border: 1px solid var(--gray-light); }
-  
+
   /* BALANCE BLOCKS */
   .finance-total {
     background: var(--primary);
@@ -239,7 +239,7 @@
   }
 
   .text-right { text-align: right; }
-  
+
 </style>
 </head>
 <body>
@@ -258,8 +258,8 @@
         <div class="brand-details">
           <div>{{ agency.adresse|default:"Adresse de l'agence non renseignée" }}</div>
           <div style="margin-top: 4px;">
-            Tél: <strong>{{ agency.telephone|default:"-" }}</strong> &nbsp;&bull;&nbsp; 
-            RC: <strong>{{ agency.rc|default:"-" }}</strong> &nbsp;&bull;&nbsp; 
+            Tél: <strong>{{ agency.telephone|default:"-" }}</strong> &nbsp;&bull;&nbsp;
+            RC: <strong>{{ agency.rc|default:"-" }}</strong> &nbsp;&bull;&nbsp;
             ICE: <strong>{{ agency.ice|default:"-" }}</strong>
           </div>
         </div>
@@ -285,10 +285,10 @@
   <div class="card-container">
     <!-- CLIENT CARTE -->
     <div class="card card-bg" style="width: {% if contract.deuxieme_chauffeur %}62%{% else %}50%{% endif %};">
-      <div class="card-header">1. Informations Locataire 
+      <div class="card-header">1. Informations Locataire
         {% if contract.deuxieme_chauffeur %} &amp; 2ème Conducteur {% endif %}
       </div>
-      
+
       <div style="display: flex; gap: 15px;">
         <!-- PRIMARY DRIVER -->
         <div style="flex: 1;">
@@ -321,7 +321,7 @@
         {% endif %}
       </div>
     </div>
-    
+
     <!-- VEHICLE CARTE -->
 <div class="card" style="width: {% if contract.deuxieme_chauffeur %}40%{% else %}50%{% endif %};">
   <div class="card-header">2. Description du Véhicule</div>
@@ -331,7 +331,7 @@
         <div class="spec-box"><div class="spec-label">Couleur</div><div class="spec-val title-font">{{ contract.vehicle.couleur|default:"—" }}</div></div>
         <div class="spec-box"><div class="spec-label">Carburant</div><div class="spec-val title-font">{{ contract.vehicle.get_carburant_display|default:"—" }}</div></div>
       </div>
-      
+
       <div class="card-header" style="margin-top: 12px;">Équipements et Accessoires Inclus</div>
       <table class="modern-table">
         <tr>
@@ -382,7 +382,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="gauge-box">
       <div class="gauge-title">Restitution Prévue / Effective (Retour)</div>
       <div class="gauge-date">
@@ -429,7 +429,7 @@
           <p style="margin:0; font-size:9px; color:var(--gray-bold); line-height: 1.3;">{{ contract.degats_depart|default:"Aucun dégât signalé par l'agent ou le client." }}</p>
         </div>
       </div>
-      
+
       <!-- Situation Retour -->
       <div style="display:flex; gap: 16px; align-items:flex-start;">
         <div style="width: 120px; text-align: center;">
@@ -445,7 +445,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- PAIEMENT -->
 <div class="card" style="width: 40%;">
   <div class="card-header">4. Bilan Financier</div>
@@ -464,7 +464,7 @@
         <div class="kv-item"><span class="kv-label">Dépôt / Caution</span><span class="kv-value">{{ contract.caution|floatformat:2|default:"0.00" }} DH</span></div>
         <div class="kv-item"><span class="kv-label">Mode Règlement</span><span class="kv-value">{{ contract.methode_paiement|default:"Espèce" }}</span></div>
       </div>
-      
+
       <div class="finance-total">
         <span class="lbl">Reste à Payer</span>
         <span class="val">{{ contract.reste_a_payer|floatformat:2|default:"0.00" }} <span style="font-size:9px;">DH</span></span>

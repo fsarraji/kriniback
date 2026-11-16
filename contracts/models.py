@@ -1,11 +1,13 @@
-from django.db import models
-from agency.models import Agency, CustomUser
-from fleet.models import Vehicle
-from clients.models import Client
-from django.utils import timezone
-from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal
+
+from django.db import models
+from django.utils import timezone
+
+from agency.models import Agency, CustomUser
 from car_rental_backend.uploads import pdf_job_upload_to
+from clients.models import Client
+from fleet.models import Vehicle
 
 
 def _release_vehicle(vehicle, exclude_contract=None):
@@ -16,57 +18,93 @@ def _release_vehicle(vehicle, exclude_contract=None):
     il est alors réellement loué par un autre contrat. `exclude_contract` exclut
     le contrat en cours de modification (non encore commité au moment de l'appel).
     """
-    active_rental = Contract.objects.filter(vehicle=vehicle, statut='EN_COURS')
+    active_rental = Contract.objects.filter(vehicle=vehicle, statut="EN_COURS")
     if exclude_contract is not None and exclude_contract.pk is not None:
         active_rental = active_rental.exclude(pk=exclude_contract.pk)
     if active_rental.exists():
         return
-    if vehicle.statut != 'Available':
-        vehicle.statut = 'Available'
-        vehicle.save(update_fields=['statut'])
+    if vehicle.statut != "Available":
+        vehicle.statut = "Available"
+        vehicle.save(update_fields=["statut"])
+
 
 class Contract(models.Model):
     # حالات العقد
-    STATUS_CHOICES =[
-        ('RESERVE', 'محجوزة مسبقاً'),
-        ('EN_COURS', 'في طور الكراء (جارية)'),
-        ('TERMINE', 'منتهية (تم إرجاع السيارة)'),
-        ('ANNULE', 'ملغاة'),
+    STATUS_CHOICES = [
+        ("RESERVE", "محجوزة مسبقاً"),
+        ("EN_COURS", "في طور الكراء (جارية)"),
+        ("TERMINE", "منتهية (تم إرجاع السيارة)"),
+        ("ANNULE", "ملغاة"),
     ]
 
     # مستويات الوقود (0/8 إلى 8/8 كما في الورقة)
     FUEL_LEVELS = [
-        ('0/8', '0/8 (Vide)'),
-        ('1/8', '1/8'),
-        ('2/8', '2/8 (1/4)'),
-        ('3/8', '3/8'),
-        ('4/8', '4/8 (1/2)'),
-        ('5/8', '5/8'),
-        ('6/8', '6/8 (3/4)'),
-        ('7/8', '7/8'),
-        ('8/8', '8/8 (Plein)'),
+        ("0/8", "0/8 (Vide)"),
+        ("1/8", "1/8"),
+        ("2/8", "2/8 (1/4)"),
+        ("3/8", "3/8"),
+        ("4/8", "4/8 (1/2)"),
+        ("5/8", "5/8"),
+        ("6/8", "6/8 (3/4)"),
+        ("7/8", "7/8"),
+        ("8/8", "8/8 (Plein)"),
     ]
 
     # 1. روابط الـ Multi-Agency والمستخدمين
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='contracts')
-    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name="الموظف الذي أنشأ العقد")
-    
+    agency = models.ForeignKey(
+        Agency, on_delete=models.CASCADE, related_name="contracts"
+    )
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="الموظف الذي أنشأ العقد",
+    )
+
     # 2. أطراف العقد (السيارة والزبون)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='contracts', verbose_name="السيارة")
-    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='contracts', verbose_name="الزبون المكتري")
-    deuxieme_chauffeur = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, blank=True, related_name='contracts_as_second', verbose_name="السائق الثاني")
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.PROTECT,
+        related_name="contracts",
+        verbose_name="السيارة",
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.PROTECT,
+        related_name="contracts",
+        verbose_name="الزبون المكتري",
+    )
+    deuxieme_chauffeur = models.ForeignKey(
+        Client,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="contracts_as_second",
+        verbose_name="السائق الثاني",
+    )
 
     # 3. التواريخ والمدة
-    date_sortie = models.DateTimeField(default=timezone.now, verbose_name="تاريخ ووقت التسليم")
+    date_sortie = models.DateTimeField(
+        default=timezone.now, verbose_name="تاريخ ووقت التسليم"
+    )
     date_retour_prevue = models.DateTimeField(verbose_name="تاريخ ووقت الإرجاع المتوقع")
-    date_retour_effective = models.DateTimeField(null=True, blank=True, verbose_name="تاريخ الإرجاع الفعلي") # يتم ملؤه عند إرجاع السيارة
+    date_retour_effective = models.DateTimeField(
+        null=True, blank=True, verbose_name="تاريخ الإرجاع الفعلي"
+    )  # يتم ملؤه عند إرجاع السيارة
     jours = models.IntegerField(default=1, verbose_name="عدد الأيام")
 
     # 4. الحالة عند التسليم (Livraison)
     km_sortie = models.IntegerField(verbose_name="الكيلومتراج عند الخروج")
-    carburant_sortie = models.CharField(max_length=10, choices=FUEL_LEVELS, default='2/8', verbose_name="الوقود عند الخروج")
-    degats_depart = models.TextField(null=True, blank=True, verbose_name="ملاحظات/أضرار عند الخروج")
-    
+    carburant_sortie = models.CharField(
+        max_length=10,
+        choices=FUEL_LEVELS,
+        default="2/8",
+        verbose_name="الوقود عند الخروج",
+    )
+    degats_depart = models.TextField(
+        null=True, blank=True, verbose_name="ملاحظات/أضرار عند الخروج"
+    )
+
     # الإكسسوارات (Accessories)
     roue_secours = models.BooleanField(default=False, verbose_name="Roue de Secours")
     cric = models.BooleanField(default=False, verbose_name="Cric")
@@ -78,30 +116,71 @@ class Contract(models.Model):
     cles = models.BooleanField(default=False, verbose_name="Clés")
 
     # 5. الحالة عند الإرجاع (Réception)
-    km_retour = models.IntegerField(null=True, blank=True, verbose_name="الكيلومتراج عند الإرجاع")
-    carburant_retour = models.CharField(max_length=10, choices=FUEL_LEVELS, null=True, blank=True, verbose_name="الوقود عند الإرجاع")
-    degats_retour = models.TextField(null=True, blank=True, verbose_name="ملاحظات/أضرار عند الإرجاع")
+    km_retour = models.IntegerField(
+        null=True, blank=True, verbose_name="الكيلومتراج عند الإرجاع"
+    )
+    carburant_retour = models.CharField(
+        max_length=10,
+        choices=FUEL_LEVELS,
+        null=True,
+        blank=True,
+        verbose_name="الوقود عند الإرجاع",
+    )
+    degats_retour = models.TextField(
+        null=True, blank=True, verbose_name="ملاحظات/أضرار عند الإرجاع"
+    )
 
     # الإكسسوارات عند الإرجاع (Accessories Return)
-    roue_secours_retour = models.BooleanField(default=False, verbose_name="Roue de Secours (Retour)")
+    roue_secours_retour = models.BooleanField(
+        default=False, verbose_name="Roue de Secours (Retour)"
+    )
     cric_retour = models.BooleanField(default=False, verbose_name="Cric (Retour)")
-    manivelle_retour = models.BooleanField(default=False, verbose_name="Manivelle (Retour)")
+    manivelle_retour = models.BooleanField(
+        default=False, verbose_name="Manivelle (Retour)"
+    )
     gilet_retour = models.BooleanField(default=False, verbose_name="Gilet (Retour)")
-    triangle_retour = models.BooleanField(default=False, verbose_name="Triangle (Retour)")
-    extincteur_retour = models.BooleanField(default=False, verbose_name="Extincteur (Retour)")
+    triangle_retour = models.BooleanField(
+        default=False, verbose_name="Triangle (Retour)"
+    )
+    extincteur_retour = models.BooleanField(
+        default=False, verbose_name="Extincteur (Retour)"
+    )
     papiers_retour = models.BooleanField(default=False, verbose_name="Papiers (Retour)")
     cles_retour = models.BooleanField(default=False, verbose_name="Clés (Retour)")
 
     # 6. الحسابات المالية (Finance)
-    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="ثمن الكراء اليومي المتفق عليه")
-    montant_total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="المبلغ الإجمالي")
-    montant_paye = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="المبلغ المدفوع (التسبيق)")
-    reste_a_payer = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="المبلغ المتبقي")
-    caution = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="مبلغ الضمانة (Caution)")
-    methode_paiement = models.CharField(max_length=50, default="Espèce", verbose_name="طريقة الدفع") # Espèce, Chèque, TPE, Virement
+    prix_par_jour = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="ثمن الكراء اليومي المتفق عليه"
+    )
+    montant_total = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="المبلغ الإجمالي"
+    )
+    montant_paye = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="المبلغ المدفوع (التسبيق)",
+    )
+    reste_a_payer = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, verbose_name="المبلغ المتبقي"
+    )
+    caution = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="مبلغ الضمانة (Caution)",
+    )
+    methode_paiement = models.CharField(
+        max_length=50, default="Espèce", verbose_name="طريقة الدفع"
+    )  # Espèce, Chèque, TPE, Virement
 
     # 7. حالة العقد
-    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='EN_COURS', verbose_name="حالة العقد")
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="EN_COURS",
+        verbose_name="حالة العقد",
+    )
     date_creation = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -110,33 +189,57 @@ class Contract(models.Model):
         #    périodes saisonnières (somme des prix journaliers). Un prix saisi
         #    manuellement par l'agence (différent du prix défaut et du prix
         #    moyen saisonnier) prime : montant = prix * jours.
-        if self.vehicle_id and self.date_sortie and self.jours:
+        # Un contrat déjà enregistré dont les paramètres tarifaires n'ont pas
+        # changé (prix, durée, dates, véhicule) garde son montant : une
+        # modification ultérieure des tarifs saisonniers ne doit pas réécrire
+        # l'historique (paiement, clôture, etc.).
+        keep_amount = False
+        if self.pk:
+            stored = (
+                Contract.objects.filter(pk=self.pk)
+                .values("prix_par_jour", "jours", "date_sortie", "vehicle_id")
+                .first()
+            )
+            keep_amount = bool(
+                stored
+                and stored["prix_par_jour"] == self.prix_par_jour
+                and stored["jours"] == self.jours
+                and stored["date_sortie"] == self.date_sortie
+                and stored["vehicle_id"] == self.vehicle_id
+                and self.montant_total is not None
+            )
+
+        if keep_amount:
+            pass
+        elif self.vehicle_id and self.date_sortie and self.jours:
             end = self.date_sortie + timedelta(days=self.jours - 1)
             quote = self.vehicle.prix_pour_periode(self.date_sortie, end)
-            moyen = quote['prix_moyen'].quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            moyen = quote["prix_moyen"].quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             is_default = self.prix_par_jour == self.vehicle.prix_par_jour
             is_saisonnier = self.prix_par_jour == moyen
             if is_default or is_saisonnier:
-                self.montant_total = quote['total']
+                self.montant_total = quote["total"]
                 self.prix_par_jour = moyen
             else:
                 self.montant_total = self.prix_par_jour * self.jours
         elif self.prix_par_jour and self.jours:
             self.montant_total = self.prix_par_jour * self.jours
         self.reste_a_payer = self.montant_total - self.montant_paye
-            
+
         # 2. تحديث الكيلومتراج الخاص بالسيارة إذا تم إرجاعها
-        if self.statut == 'TERMINE' and self.km_retour:
+        if self.statut == "TERMINE" and self.km_retour:
             self.vehicle.kilometrage = self.km_retour
-            self.vehicle.statut = 'Available'
+            self.vehicle.statut = "Available"
             self.vehicle.save()
-            
+
         # 3. تحديث حالة السيارة إذا كانت في طور الكراء أو ملغاة
-        elif self.statut == 'EN_COURS':
-            self.vehicle.statut = 'Rented'
+        elif self.statut == "EN_COURS":
+            self.vehicle.statut = "Rented"
             self.vehicle.save()
-            
-        elif self.statut == 'ANNULE':
+
+        elif self.statut == "ANNULE":
             _release_vehicle(self.vehicle, exclude_contract=self)
 
         super(Contract, self).save(*args, **kwargs)
@@ -144,10 +247,44 @@ class Contract(models.Model):
     def __str__(self):
         return f"عقد رقم {self.id} - {self.client.nom} - {self.vehicle.matricule}"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["statut"], name="contract_statut_idx"),
+            models.Index(fields=["client"], name="contract_client_idx"),
+            models.Index(fields=["vehicle"], name="contract_vehicle_idx"),
+            models.Index(fields=["date_creation"], name="contract_date_creation_idx"),
+            models.Index(fields=["montant_total"], name="contract_montant_total_idx"),
+            models.Index(fields=["date_sortie"], name="contract_date_sortie_idx"),
+            models.Index(
+                fields=["date_retour_prevue"], name="contract_date_return_idx"
+            ),
+            # Composite indexes for common query patterns
+            models.Index(
+                fields=["agency", "statut"], name="contract_agency_statut_idx"
+            ),
+            models.Index(
+                fields=["date_creation", "statut"],
+                name="contract_date_cre_statut_idx",
+            ),
+        ]
+
 
 class ContractDamage(models.Model):
-    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='damages')
-    type = models.CharField(max_length=10, choices=[('DEPART', 'Départ'), ('RETOUR', 'Retour')], default='DEPART')
+    class Meta:
+        indexes = [
+            models.Index(fields=["contract"], name="contract_damage_contract_idx"),
+            models.Index(fields=["type"], name="contract_damage_type_idx"),
+            models.Index(fields=["created_at"], name="contract_damage_created_at_idx"),
+        ]
+
+    contract = models.ForeignKey(
+        Contract, on_delete=models.CASCADE, related_name="damages"
+    )
+    type = models.CharField(
+        max_length=10,
+        choices=[("DEPART", "Départ"), ("RETOUR", "Retour")],
+        default="DEPART",
+    )
     x = models.FloatField(verbose_name="الإحداثي X (%)")
     y = models.FloatField(verbose_name="الإحداثي Y (%)")
     description = models.TextField(null=True, blank=True, verbose_name="وصف الضرر")
@@ -159,14 +296,26 @@ class ContractDamage(models.Model):
 
 class BookingRequest(models.Model):
     STATUS_CHOICES = [
-        ('PENDING', 'En attente'),
-        ('CONTACTED', 'Contacté'),
-        ('CONFIRMED', 'Confirmé'),
-        ('CANCELLED', 'Annulé'),
+        ("PENDING", "En attente"),
+        ("CONTACTED", "Contacté"),
+        ("CONFIRMED", "Confirmé"),
+        ("CANCELLED", "Annulé"),
     ]
 
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='booking_requests', verbose_name="Agence")
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True, blank=True, related_name='booking_requests', verbose_name="Véhicule")
+    agency = models.ForeignKey(
+        Agency,
+        on_delete=models.CASCADE,
+        related_name="booking_requests",
+        verbose_name="Agence",
+    )
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="booking_requests",
+        verbose_name="Véhicule",
+    )
     nom = models.CharField(max_length=50, verbose_name="Nom")
     prenom = models.CharField(max_length=50, verbose_name="Prénom")
     telephone = models.CharField(max_length=20, verbose_name="Téléphone")
@@ -174,11 +323,13 @@ class BookingRequest(models.Model):
     message = models.TextField(null=True, blank=True, verbose_name="Message")
     date_sortie = models.DateTimeField(verbose_name="Date de sortie souhaitée")
     date_retour_prevue = models.DateTimeField(verbose_name="Date de retour souhaitée")
-    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Statut")
+    statut = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="PENDING", verbose_name="Statut"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Demande #{self.id} - {self.nom} {self.prenom}"
@@ -186,29 +337,48 @@ class BookingRequest(models.Model):
 
 class Reservation(models.Model):
     STATUS_CHOICES = [
-        ('PENDING', 'En attente'),
-        ('CONFIRMED', 'Confirmée'),
-        ('CANCELLED', 'Annulée'),
+        ("PENDING", "En attente"),
+        ("CONFIRMED", "Confirmée"),
+        ("CANCELLED", "Annulée"),
     ]
 
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='reservations', verbose_name="Client")
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='reservations', verbose_name="Véhicule")
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='reservations', verbose_name="Agence")
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="reservations",
+        verbose_name="Client",
+    )
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.PROTECT,
+        related_name="reservations",
+        verbose_name="Véhicule",
+    )
+    agency = models.ForeignKey(
+        Agency,
+        on_delete=models.CASCADE,
+        related_name="reservations",
+        verbose_name="Agence",
+    )
     date_sortie = models.DateTimeField(verbose_name="Date de sortie")
     date_retour_prevue = models.DateTimeField(verbose_name="Date de retour prévue")
-    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Prix par jour")
-    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Statut")
+    prix_par_jour = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="Prix par jour"
+    )
+    statut = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="PENDING", verbose_name="Statut"
+    )
     notes = models.TextField(null=True, blank=True, verbose_name="Notes")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         result = super().save(*args, **kwargs)
-        if self.statut == 'CANCELLED':
+        if self.statut == "CANCELLED":
             _release_vehicle(self.vehicle)
         return result
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Réservation #{self.id} - {self.client.nom} - {self.vehicle.matricule}"
@@ -216,25 +386,32 @@ class Reservation(models.Model):
 
 class PdfJob(models.Model):
     STATUS_CHOICES = [
-        ('PENDING', 'En attente'),
-        ('PROCESSING', 'En cours'),
-        ('READY', 'Prêt'),
-        ('ERROR', 'Erreur'),
+        ("PENDING", "En attente"),
+        ("PROCESSING", "En cours"),
+        ("READY", "Prêt"),
+        ("ERROR", "Erreur"),
     ]
     JOB_TYPES = [
-        ('contract', 'Contrat'),
-        ('receipt', 'Reçu réservation'),
+        ("contract", "Contrat"),
+        ("receipt", "Reçu réservation"),
     ]
     TEMPLATE_CHOICES = [
-        ('standard', 'Standard'),
-        ('minimal', 'Minimal'),
+        ("standard", "Standard"),
+        ("minimal", "Minimal"),
     ]
 
-    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='pdf_jobs')
+    contract = models.ForeignKey(
+        Contract, on_delete=models.CASCADE, related_name="pdf_jobs"
+    )
     job_type = models.CharField(max_length=20, choices=JOB_TYPES)
-    template = models.CharField(max_length=20, choices=TEMPLATE_CHOICES, default='standard', verbose_name="Template contrat")
+    template = models.CharField(
+        max_length=20,
+        choices=TEMPLATE_CHOICES,
+        default="standard",
+        verbose_name="Template contrat",
+    )
     with_cachet = models.BooleanField(default=False, verbose_name="Avec cachet")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
     error_message = models.TextField(null=True, blank=True)
     pdf_file = models.FileField(upload_to=pdf_job_upload_to, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

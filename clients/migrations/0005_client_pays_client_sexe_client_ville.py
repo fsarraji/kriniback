@@ -4,25 +4,34 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('clients', '0004_client_user_alter_client_agency'),
+        ("clients", "0004_client_user_alter_client_agency"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='client',
-            name='pays',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Pays'),
+            model_name="client",
+            name="pays",
+            field=models.CharField(
+                blank=True, max_length=100, null=True, verbose_name="Pays"
+            ),
         ),
         migrations.AddField(
-            model_name='client',
-            name='sexe',
-            field=models.CharField(blank=True, choices=[('HOMME', 'Homme'), ('FEMME', 'Femme')], max_length=10, null=True, verbose_name='Sexe'),
+            model_name="client",
+            name="sexe",
+            field=models.CharField(
+                blank=True,
+                choices=[("HOMME", "Homme"), ("FEMME", "Femme")],
+                max_length=10,
+                null=True,
+                verbose_name="Sexe",
+            ),
         ),
         migrations.AddField(
-            model_name='client',
-            name='ville',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Ville'),
+            model_name="client",
+            name="ville",
+            field=models.CharField(
+                blank=True, max_length=100, null=True, verbose_name="Ville"
+            ),
         ),
     ]

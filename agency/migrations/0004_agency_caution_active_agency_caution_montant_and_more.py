@@ -4,30 +4,38 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0003_alter_agency_adresse_alter_agency_ice_and_more'),
+        ("agency", "0003_alter_agency_adresse_alter_agency_ice_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agency',
-            name='caution_active',
-            field=models.BooleanField(default=True, verbose_name='Caution active'),
+            model_name="agency",
+            name="caution_active",
+            field=models.BooleanField(default=True, verbose_name="Caution active"),
         ),
         migrations.AddField(
-            model_name='agency',
-            name='caution_montant',
-            field=models.DecimalField(decimal_places=2, default=1500.0, max_digits=10, verbose_name='Montant de la caution'),
+            model_name="agency",
+            name="caution_montant",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=1500.0,
+                max_digits=10,
+                verbose_name="Montant de la caution",
+            ),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="agency",
+            name="id",
+            field=models.BigAutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="customuser",
+            name="id",
+            field=models.BigAutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
     ]

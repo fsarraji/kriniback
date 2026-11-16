@@ -18,7 +18,12 @@ from collections import defaultdict
 from django.core.management.base import BaseCommand, CommandError
 
 from fleet.models import Vehicle
-from fleet.traccar import TraccarError, TraccarNotConfigured, get_positions, normalize_position
+from fleet.traccar import (
+    TraccarError,
+    TraccarNotConfigured,
+    get_positions,
+    normalize_position,
+)
 
 
 class Command(BaseCommand):
@@ -26,31 +31,45 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'vehicles',
-            nargs='*',
+            "vehicles",
+            nargs="*",
             help="Matricules ou ids (optionnel : tous les véhicules Traccar par défaut).",
         )
-        parser.add_argument('--dry-run', action='store_true', help="Affiche les changements sans les appliquer.")
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Affiche les changements sans les appliquer.",
+        )
 
     def _resolve(self, ref):
         vehicle = None
         if str(ref).isdigit():
-            vehicle = Vehicle.objects.select_related('agency', 'gps_device').filter(pk=int(ref)).first()
+            vehicle = (
+                Vehicle.objects.select_related("agency", "gps_device")
+                .filter(pk=int(ref))
+                .first()
+            )
         if vehicle is None:
-            vehicle = Vehicle.objects.select_related('agency', 'gps_device').filter(matricule=ref).first()
+            vehicle = (
+                Vehicle.objects.select_related("agency", "gps_device")
+                .filter(matricule=ref)
+                .first()
+            )
         if vehicle is None:
             raise CommandError(f"Véhicule introuvable : {ref}")
         return vehicle
 
     def handle(self, *args, **options):
-        refs = options['vehicles']
-        dry_run = options['dry_run']
+        refs = options["vehicles"]
+        dry_run = options["dry_run"]
 
         if refs:
             vehicles = [self._resolve(ref) for ref in refs]
         else:
             vehicles = list(
-                Vehicle.objects.select_related('agency', 'gps_device').filter(gps_device__isnull=False)
+                Vehicle.objects.select_related("agency", "gps_device").filter(
+                    gps_device__isnull=False
+                )
             )
 
         if not vehicles:
@@ -67,20 +86,26 @@ class Command(BaseCommand):
             agency = group[0].agency
             try:
                 positions = {
-                    p.get('deviceId'): p
+                    p.get("deviceId"): p
                     for p in get_positions(agency=agency)
-                    if p.get('deviceId')
+                    if p.get("deviceId")
                 }
             except TraccarNotConfigured:
                 for vehicle in group:
-                    self.stdout.write(self.style.WARNING(
-                        f"[{vehicle.matricule}] Traccar non configuré pour l'agence {agency_id} — ignoré."
-                    ))
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"[{vehicle.matricule}] Traccar non configuré pour l'agence {agency_id} — ignoré."
+                        )
+                    )
                     skipped += 1
                 continue
             except TraccarError as exc:
                 for vehicle in group:
-                    self.stdout.write(self.style.ERROR(f"[{vehicle.matricule}] Erreur Traccar : {exc}"))
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"[{vehicle.matricule}] Erreur Traccar : {exc}"
+                        )
+                    )
                     errors += 1
                 continue
 
@@ -89,31 +114,41 @@ class Command(BaseCommand):
                 if not device_id:
                     continue
                 position = normalize_position(positions.get(device_id))
-                if not position or position.get('odometer') is None:
-                    self.stdout.write(self.style.WARNING(
-                        f"[{vehicle.matricule}] Pas de position / kilométrage Traccar."
-                    ))
+                if not position or position.get("odometer") is None:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"[{vehicle.matricule}] Pas de position / kilométrage Traccar."
+                        )
+                    )
                     skipped += 1
                     continue
 
-                new_km = int(round(position['odometer'] / 1000.0))
+                new_km = int(round(position["odometer"] / 1000.0))
                 old_km = vehicle.kilometrage
                 if new_km == old_km:
-                    self.stdout.write(f"[{vehicle.matricule}] kilométrage inchangé : {new_km} km")
+                    self.stdout.write(
+                        f"[{vehicle.matricule}] kilométrage inchangé : {new_km} km"
+                    )
                     unchanged += 1
                     continue
 
                 if dry_run:
-                    self.stdout.write(f"[{vehicle.matricule}] {old_km} -> {new_km} km (dry-run)")
+                    self.stdout.write(
+                        f"[{vehicle.matricule}] {old_km} -> {new_km} km (dry-run)"
+                    )
                 else:
                     vehicle.kilometrage = new_km
-                    vehicle.save(update_fields=['kilometrage'])
-                    self.stdout.write(self.style.SUCCESS(
-                        f"[{vehicle.matricule}] {old_km} -> {new_km} km"
-                    ))
+                    vehicle.save(update_fields=["kilometrage"])
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"[{vehicle.matricule}] {old_km} -> {new_km} km"
+                        )
+                    )
                 updated += 1
 
         self.stdout.write("")
-        self.stdout.write(self.style.SUCCESS(
-            f"Terminé : {updated} mis à jour, {unchanged} inchangés, {skipped} ignorés, {errors} erreurs."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Terminé : {updated} mis à jour, {unchanged} inchangés, {skipped} ignorés, {errors} erreurs."
+            )
+        )

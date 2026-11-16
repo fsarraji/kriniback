@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('fleet', '0001_initial'),
+        ("fleet", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='vehicle',
-            name='chauffeur_disponible',
-            field=models.BooleanField(default=False, verbose_name='سائق متوفر'),
+            model_name="vehicle",
+            name="chauffeur_disponible",
+            field=models.BooleanField(default=False, verbose_name="سائق متوفر"),
         ),
     ]

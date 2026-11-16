@@ -3,8 +3,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import models
+
 from agency.models import Agency
 from car_rental_backend.uploads import vehicle_image_upload_to
+from car_rental_backend.validators import validate_image_size
 
 
 def _add_months(d, months):
@@ -21,17 +23,22 @@ def _today():
 
 
 class Brand(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name="Nom de la marque")
-    
+    name = models.CharField(
+        max_length=100, unique=True, verbose_name="Nom de la marque"
+    )
+
     def __str__(self):
         return self.name
 
+
 class ModelCar(models.Model):
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='models', verbose_name="Marque")
+    brand = models.ForeignKey(
+        Brand, on_delete=models.CASCADE, related_name="models", verbose_name="Marque"
+    )
     name = models.CharField(max_length=100, verbose_name="Nom du modèle")
-    
+
     class Meta:
-        unique_together = ('brand', 'name')
+        unique_together = ("brand", "name")
         verbose_name = "Modèle de voiture"
         verbose_name_plural = "Modèles de voitures"
 
@@ -40,50 +47,98 @@ class ModelCar(models.Model):
 
 
 class Vehicle(models.Model):
-    FUEL_CHOICES =[
-        ('Diesel', 'Diesel'),
-        ('Essence', 'Essence'),
-        ('Hybride', 'Hybride'),
-        ('Electrique', 'Electrique'),
+    FUEL_CHOICES = [
+        ("Diesel", "Diesel"),
+        ("Essence", "Essence"),
+        ("Hybride", "Hybride"),
+        ("Electrique", "Electrique"),
     ]
-    
-    STATUS_CHOICES =[
-        ('Available', 'Disponible'),
-        ('Rented', 'Loué'),
-        ('Maintenance', 'En maintenance'),
+
+    STATUS_CHOICES = [
+        ("Available", "Disponible"),
+        ("Rented", "Loué"),
+        ("Maintenance", "En maintenance"),
     ]
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='vehicles')
+    agency = models.ForeignKey(
+        Agency, on_delete=models.CASCADE, related_name="vehicles"
+    )
     matricule = models.CharField(max_length=20, unique=True, verbose_name="Matricule")
-    matricule_definitif = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name="Matricule définitif (00000-lettre-00)")
-    marque = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, verbose_name="Marque") 
-    modele = models.ForeignKey(ModelCar, on_delete=models.SET_NULL, null=True, verbose_name="Modèle")
+    matricule_definitif = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Matricule définitif (00000-lettre-00)",
+    )
+    marque = models.ForeignKey(
+        Brand, on_delete=models.SET_NULL, null=True, verbose_name="Marque"
+    )
+    modele = models.ForeignKey(
+        ModelCar, on_delete=models.SET_NULL, null=True, verbose_name="Modèle"
+    )
     annee = models.IntegerField(verbose_name="Année")
     couleur = models.CharField(max_length=30, verbose_name="Couleur")
-    carburant = models.CharField(max_length=20, choices=FUEL_CHOICES, verbose_name="Carburant")
+    carburant = models.CharField(
+        max_length=20, choices=FUEL_CHOICES, verbose_name="Carburant"
+    )
     kilometrage = models.IntegerField(verbose_name="Kilométrage")
-    prix_par_jour = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Prix par jour (défaut)")
-    chauffeur_disponible = models.BooleanField(default=False, verbose_name="Chauffeur disponible")
-    statut = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Available', verbose_name="Statut")
+    prix_par_jour = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="Prix par jour (défaut)"
+    )
+    chauffeur_disponible = models.BooleanField(
+        default=False, verbose_name="Chauffeur disponible"
+    )
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="Available",
+        verbose_name="Statut",
+    )
 
-    date_mise_en_circulation = models.DateField(null=True, blank=True, verbose_name="Date de mise en circulation")
-    date_autorisation_circulation = models.DateField(null=True, blank=True, verbose_name="Date d'autorisation de circulation")
-    puissance_fiscale = models.PositiveIntegerField(null=True, blank=True, verbose_name="Puissance fiscale (CV)")
-    
+    date_mise_en_circulation = models.DateField(
+        null=True, blank=True, verbose_name="Date de mise en circulation"
+    )
+    date_autorisation_circulation = models.DateField(
+        null=True, blank=True, verbose_name="Date d'autorisation de circulation"
+    )
+    puissance_fiscale = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Puissance fiscale (CV)"
+    )
+
     date_assurance = models.DateField(verbose_name="Date assurance")
     date_visite_technique = models.DateField(verbose_name="Date visite technique")
     prochain_vidange_km = models.IntegerField(verbose_name="Prochain vidange (km)")
-    
-    image = models.ImageField(upload_to=vehicle_image_upload_to, null=True, blank=True)
-    tarif_km_extra = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Tarif km supplémentaire (DH/km)")
+
+    image = models.ImageField(
+        upload_to=vehicle_image_upload_to,
+        null=True,
+        blank=True,
+        validators=[validate_image_size],
+    )
+    tarif_km_extra = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Tarif km supplémentaire (DH/km)",
+    )
 
     # Dispositif GPS installé dans le véhicule
-    gps_imei = models.CharField(max_length=50, null=True, blank=True, verbose_name="ID / IMEI du dispositif GPS")
-    sim_number = models.CharField(max_length=30, null=True, blank=True, verbose_name="Numéro carte SIM")
-    sim_operator = models.CharField(max_length=50, null=True, blank=True, verbose_name="Opérateur télécom")
+    gps_imei = models.CharField(
+        max_length=50, null=True, blank=True, verbose_name="ID / IMEI du dispositif GPS"
+    )
+    sim_number = models.CharField(
+        max_length=30, null=True, blank=True, verbose_name="Numéro carte SIM"
+    )
+    sim_operator = models.CharField(
+        max_length=50, null=True, blank=True, verbose_name="Opérateur télécom"
+    )
 
     # Archivage (fin de travail)
     is_archived = models.BooleanField(default=False, verbose_name="Archivé")
-    date_fin_travail = models.DateField(null=True, blank=True, verbose_name="Date de fin de travail")
+    date_fin_travail = models.DateField(
+        null=True, blank=True, verbose_name="Date de fin de travail"
+    )
 
     # Suppression douce (masqué de la flotte, restauré par le super admin)
     is_deleted = models.BooleanField(default=False, verbose_name="Supprimé")
@@ -92,18 +147,19 @@ class Vehicle(models.Model):
     def km_loue_total(self):
         """Nombre total de kilomètres parcourus par les locataires (contrats terminés)."""
         from django.db.models import F, Sum
+
         result = self.contracts.filter(
-            statut='TERMINE',
+            statut="TERMINE",
             km_retour__isnull=False,
-            km_retour__gte=F('km_sortie'),
-        ).aggregate(total=Sum(F('km_retour') - F('km_sortie')))
-        return result.get('total') or 0
+            km_retour__gte=F("km_sortie"),
+        ).aggregate(total=Sum(F("km_retour") - F("km_sortie")))
+        return result.get("total") or 0
 
     def save(self, *args, **kwargs):
         # Normalise le statut (insensible à la casse / aux espaces) vers les
         # valeurs canoniques. Évite les valeurs erronées ('AVAILABLE',
         # 'available'...) qui cassent les filtres et les boutons des fronts.
-        s = (self.statut or '').strip()
+        s = (self.statut or "").strip()
         for choice, _ in self.STATUS_CHOICES:
             if s and s.lower() == choice.lower():
                 if self.statut != choice:
@@ -111,8 +167,13 @@ class Vehicle(models.Model):
                 break
         super().save(*args, **kwargs)
 
+    @property
+    def display_name(self):
+        """« Dacia Logan » : le nom du modèle contient déjà la marque (ModelCar.__str__)."""
+        return str(self.modele)
+
     def __str__(self):
-        return f"{self.marque} {self.modele} - {self.matricule}"
+        return f"{self.display_name} - {self.matricule}"
 
     @property
     def matricule_actuel(self):
@@ -138,7 +199,9 @@ class Vehicle(models.Model):
             if not interval.contient(jour):
                 continue
             rank = VehiclePriceInterval.TYPE_RANK.get(interval.type, 0)
-            if rank > best_rank or (rank == best_rank and (best_prix is None or interval.prix > best_prix)):
+            if rank > best_rank or (
+                rank == best_rank and (best_prix is None or interval.prix > best_prix)
+            ):
                 best, best_rank, best_prix = interval, rank, interval.prix
         return best
 
@@ -154,10 +217,14 @@ class Vehicle(models.Model):
         Retourne {total, jours, prix_moyen, detail:[{date, prix, type}]}.
         """
         start = date_sortie.date() if not isinstance(date_sortie, date) else date_sortie
-        end = date_retour_prevue.date() if not isinstance(date_retour_prevue, date) else date_retour_prevue
+        end = (
+            date_retour_prevue.date()
+            if not isinstance(date_retour_prevue, date)
+            else date_retour_prevue
+        )
         if start > end:
             start, end = end, start
-        total = Decimal('0.00')
+        total = Decimal("0.00")
         detail = []
         jours = 0
         day = start
@@ -167,14 +234,21 @@ class Vehicle(models.Model):
             total += prix
             jours += 1
             if include_detail:
-                detail.append({
-                    'date': day.isoformat(),
-                    'prix': str(prix),
-                    'type': interval.type if interval else 'DEFAUT',
-                })
+                detail.append(
+                    {
+                        "date": day.isoformat(),
+                        "prix": str(prix),
+                        "type": interval.type if interval else "DEFAUT",
+                    }
+                )
             day += timedelta(days=1)
         prix_moyen = (total / Decimal(jours)) if jours else self.prix_par_jour
-        return {'total': total, 'jours': jours, 'prix_moyen': prix_moyen, 'detail': detail}
+        return {
+            "total": total,
+            "jours": jours,
+            "prix_moyen": prix_moyen,
+            "detail": detail,
+        }
 
     @property
     def traccar_device_id(self):
@@ -200,30 +274,44 @@ class VehiclePriceInterval(models.Model):
     """
 
     TYPE_CHOICES = [
-        ('RECURRENT', 'Récurrent (chaque année)'),
-        ('ABSOLUTE', 'Absolu (dates précises)'),
+        ("RECURRENT", "Récurrent (chaque année)"),
+        ("ABSOLUTE", "Absolu (dates précises)"),
     ]
-    TYPE_RANK = {'RECURRENT': 1, 'ABSOLUTE': 2}
+    TYPE_RANK = {"RECURRENT": 1, "ABSOLUTE": 2}
 
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='price_intervals')
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='RECURRENT', verbose_name="Type")
-    prix = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Prix journalier (DH)")
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, related_name="price_intervals"
+    )
+    type = models.CharField(
+        max_length=20, choices=TYPE_CHOICES, default="RECURRENT", verbose_name="Type"
+    )
+    prix = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="Prix journalier (DH)"
+    )
 
     date_debut = models.DateField(null=True, blank=True, verbose_name="Date de début")
     date_fin = models.DateField(null=True, blank=True, verbose_name="Date de fin")
 
-    mois_debut = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Mois de début (1-12)")
-    jour_debut = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Jour de début (1-31)")
-    mois_fin = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Mois de fin (1-12)")
-    jour_fin = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Jour de fin (1-31)")
+    mois_debut = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Mois de début (1-12)"
+    )
+    jour_debut = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Jour de début (1-31)"
+    )
+    mois_fin = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Mois de fin (1-12)"
+    )
+    jour_fin = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Jour de fin (1-31)"
+    )
 
     class Meta:
-        ordering = ['type', 'date_debut', 'mois_debut']
+        ordering = ["type", "date_debut", "mois_debut"]
         verbose_name = "Période tarifaire"
         verbose_name_plural = "Périodes tarifaires"
 
     def __str__(self):
-        if self.type == 'ABSOLUTE':
+        if self.type == "ABSOLUTE":
             return f"{self.date_debut} → {self.date_fin} : {self.prix} DH"
         return f"{self.jour_debut}/{self.mois_debut} → {self.jour_fin}/{self.mois_fin} : {self.prix} DH"
 
@@ -231,8 +319,12 @@ class VehiclePriceInterval(models.Model):
         """Vrai si `jour` tombe dans l'intervalle de cette période."""
         if not isinstance(jour, date):
             jour = jour.date()
-        if self.type == 'ABSOLUTE':
-            return bool(self.date_debut and self.date_fin and self.date_debut <= jour <= self.date_fin)
+        if self.type == "ABSOLUTE":
+            return bool(
+                self.date_debut
+                and self.date_fin
+                and self.date_debut <= jour <= self.date_fin
+            )
         debut = (self.mois_debut, self.jour_debut)
         fin = (self.mois_fin, self.jour_fin)
         md = (jour.month, jour.day)
@@ -242,20 +334,31 @@ class VehiclePriceInterval(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+
         errors = {}
         if self.prix is not None and self.prix <= 0:
-            errors['prix'] = "Le prix doit être supérieur à zéro."
-        if self.type == 'ABSOLUTE':
+            errors["prix"] = "Le prix doit être supérieur à zéro."
+        if self.type == "ABSOLUTE":
             if not self.date_debut or not self.date_fin:
-                errors['date_fin'] = "Renseignez la date de début et la date de fin."
+                errors["date_fin"] = "Renseignez la date de début et la date de fin."
             elif self.date_debut and self.date_fin and self.date_fin < self.date_debut:
-                errors['date_fin'] = "La date de fin doit être postérieure ou égale à la date de début."
+                errors[
+                    "date_fin"
+                ] = "La date de fin doit être postérieure ou égale à la date de début."
         else:
-            missing = [f for f in ('mois_debut', 'jour_debut', 'mois_fin', 'jour_fin') if getattr(self, f) is None]
+            missing = [
+                f
+                for f in ("mois_debut", "jour_debut", "mois_fin", "jour_fin")
+                if getattr(self, f) is None
+            ]
             if missing:
-                errors['mois_debut'] = "Renseignez le mois et le jour de début et de fin."
-            for label, m, j in (('mois_debut', self.mois_debut, self.jour_debut),
-                                ('mois_fin', self.mois_fin, self.jour_fin)):
+                errors[
+                    "mois_debut"
+                ] = "Renseignez le mois et le jour de début et de fin."
+            for label, m, j in (
+                ("mois_debut", self.mois_debut, self.jour_debut),
+                ("mois_fin", self.mois_fin, self.jour_fin),
+            ):
                 if m is not None and not (1 <= m <= 12):
                     errors[label] = "Le mois doit être compris entre 1 et 12."
                 if j is not None and not (1 <= j <= 31):
@@ -272,27 +375,43 @@ class GpsDevice(models.Model):
     des informations de base du dispositif (nom, IMEI, statut).
     """
 
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='gps_devices', verbose_name="Agence")
+    agency = models.ForeignKey(
+        Agency,
+        on_delete=models.CASCADE,
+        related_name="gps_devices",
+        verbose_name="Agence",
+    )
     vehicle = models.OneToOneField(
         Vehicle,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='gps_device',
+        related_name="gps_device",
         verbose_name="Véhicule",
     )
     traccar_device_id = models.BigIntegerField(verbose_name="ID dispositif Traccar")
-    name = models.CharField(max_length=200, blank=True, default='', verbose_name="Nom du dispositif")
-    unique_id = models.CharField(max_length=100, blank=True, default='', verbose_name="ID / IMEI du dispositif GPS")
-    status = models.CharField(max_length=20, blank=True, default='', verbose_name="Statut (online/offline)")
-    last_update = models.DateTimeField(null=True, blank=True, verbose_name="Dernière mise à jour")
+    name = models.CharField(
+        max_length=200, blank=True, default="", verbose_name="Nom du dispositif"
+    )
+    unique_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="ID / IMEI du dispositif GPS",
+    )
+    status = models.CharField(
+        max_length=20, blank=True, default="", verbose_name="Statut (online/offline)"
+    )
+    last_update = models.DateTimeField(
+        null=True, blank=True, verbose_name="Dernière mise à jour"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('agency', 'traccar_device_id')
-        ordering = ['-created_at']
+        unique_together = ("agency", "traccar_device_id")
+        ordering = ["-created_at"]
         verbose_name = "Dispositif GPS"
         verbose_name_plural = "Dispositifs GPS"
 
@@ -307,23 +426,31 @@ class GpsDevice(models.Model):
         autre dispositif, puis enregistre le lien. Retourne le GpsDevice.
         """
         agency = agency or vehicle.agency
-        cls.objects.filter(traccar_device_id=device_id, agency=agency).exclude(vehicle=vehicle).update(vehicle=None)
-        cls.objects.filter(vehicle=vehicle).exclude(traccar_device_id=device_id).update(vehicle=None)
+        cls.objects.filter(traccar_device_id=device_id, agency=agency).exclude(
+            vehicle=vehicle
+        ).update(vehicle=None)
+        cls.objects.filter(vehicle=vehicle).exclude(traccar_device_id=device_id).update(
+            vehicle=None
+        )
         device, _ = cls.objects.get_or_create(
             agency=agency,
             traccar_device_id=device_id,
-            defaults={'vehicle': vehicle, 'name': name or '', 'unique_id': unique_id or ''},
+            defaults={
+                "vehicle": vehicle,
+                "name": name or "",
+                "unique_id": unique_id or "",
+            },
         )
         updates = []
         if device.vehicle_id != vehicle.pk:
             device.vehicle = vehicle
-            updates.append('vehicle')
-        if name is not None and (device.name or '') != name:
+            updates.append("vehicle")
+        if name is not None and (device.name or "") != name:
             device.name = name
-            updates.append('name')
-        if unique_id is not None and (device.unique_id or '') != unique_id:
+            updates.append("name")
+        if unique_id is not None and (device.unique_id or "") != unique_id:
             device.unique_id = unique_id
-            updates.append('unique_id')
+            updates.append("unique_id")
         if updates:
             device.save(update_fields=updates)
         return device
@@ -345,15 +472,72 @@ class GpsDevice(models.Model):
 class Evaluation(models.Model):
     """Évaluation (note + commentaire) d'un véhicule par un client connecté."""
 
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='evaluations')
-    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='evaluations')
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, related_name="evaluations"
+    )
+    client = models.ForeignKey(
+        "clients.Client", on_delete=models.CASCADE, related_name="evaluations"
+    )
     rating = models.PositiveSmallIntegerField(verbose_name="Note (1 à 5)")
     comment = models.TextField(blank=True, null=True, verbose_name="Commentaire")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('vehicle', 'client')
-        ordering = ['-created_at']
+        unique_together = ("vehicle", "client")
+        ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.client} - {self.vehicle} ({self.rating}/5)"
+        return f"{self.client} - {self.vehicle} ({self.rating}/5)"
+
+
+class MaintenanceRecord(models.Model):
+    """Intervention d'entretien d'un véhicule (vidange, pneus, freins...)."""
+
+    TYPE_CHOICES = [
+        ("VIDANGE", "Vidange"),
+        ("PNEUS", "Pneus"),
+        ("FREINS", "Freins"),
+        ("REVISION", "Révision"),
+        ("CARROSSERIE", "Carrosserie"),
+        ("AUTRE", "Autre"),
+    ]
+
+    agency = models.ForeignKey(
+        Agency, on_delete=models.CASCADE, related_name="maintenance_records"
+    )
+    vehicle = models.ForeignKey(
+        "fleet.Vehicle", on_delete=models.CASCADE, related_name="maintenance_records"
+    )
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="VIDANGE")
+    date = models.DateField(default=_today)
+    km = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Km à l'intervention"
+    )
+    cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    prochain_km = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Prochaine intervention (km)"
+    )
+    prochaine_date = models.DateField(
+        null=True, blank=True, verbose_name="Prochaine intervention (date)"
+    )
+    notes = models.TextField(null=True, blank=True)
+    expense = models.OneToOneField(
+        "expenses.Expense",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_record",
+    )
+    created_by = models.ForeignKey(
+        "agency.CustomUser", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-id"]
+        indexes = [
+            models.Index(fields=["vehicle", "-date"], name="maint_vehicle_date_idx")
+        ]
+
+    def __str__(self):
+        return f"{self.get_type_display()} - {self.vehicle_id} - {self.date}"

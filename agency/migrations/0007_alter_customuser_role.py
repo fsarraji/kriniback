@@ -4,15 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0006_agency_cachet_signature_alter_agency_id_and_more'),
+        ("agency", "0006_agency_cachet_signature_alter_agency_id_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='customuser',
-            name='role',
-            field=models.CharField(choices=[('OWNER', 'Gérant / Propriétaire'), ('EMPLOYEE', 'Employé'), ('CLIENT', 'Client')], default='EMPLOYEE', max_length=20, verbose_name='Rôle'),
+            model_name="customuser",
+            name="role",
+            field=models.CharField(
+                choices=[
+                    ("OWNER", "Gérant / Propriétaire"),
+                    ("EMPLOYEE", "Employé"),
+                    ("CLIENT", "Client"),
+                ],
+                default="EMPLOYEE",
+                max_length=20,
+                verbose_name="Rôle",
+            ),
         ),
     ]

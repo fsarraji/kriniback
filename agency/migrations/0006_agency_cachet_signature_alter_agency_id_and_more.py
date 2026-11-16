@@ -4,25 +4,33 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0005_agency_km_extra_active_agency_km_par_jour_and_more'),
+        ("agency", "0005_agency_km_extra_active_agency_km_par_jour_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agency',
-            name='cachet_signature',
-            field=models.ImageField(blank=True, null=True, upload_to='agency_cachets/', verbose_name='Cachet et Signature'),
+            model_name="agency",
+            name="cachet_signature",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to="agency_cachets/",
+                verbose_name="Cachet et Signature",
+            ),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="agency",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="customuser",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
     ]

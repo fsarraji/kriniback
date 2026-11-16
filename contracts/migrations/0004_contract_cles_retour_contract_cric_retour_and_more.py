@@ -4,50 +4,53 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('contracts', '0003_contractdamage'),
+        ("contracts", "0003_contractdamage"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='contract',
-            name='cles_retour',
-            field=models.BooleanField(default=False, verbose_name='Clés (Retour)'),
+            model_name="contract",
+            name="cles_retour",
+            field=models.BooleanField(default=False, verbose_name="Clés (Retour)"),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='cric_retour',
-            field=models.BooleanField(default=False, verbose_name='Cric (Retour)'),
+            model_name="contract",
+            name="cric_retour",
+            field=models.BooleanField(default=False, verbose_name="Cric (Retour)"),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='extincteur_retour',
-            field=models.BooleanField(default=False, verbose_name='Extincteur (Retour)'),
+            model_name="contract",
+            name="extincteur_retour",
+            field=models.BooleanField(
+                default=False, verbose_name="Extincteur (Retour)"
+            ),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='gilet_retour',
-            field=models.BooleanField(default=False, verbose_name='Gilet (Retour)'),
+            model_name="contract",
+            name="gilet_retour",
+            field=models.BooleanField(default=False, verbose_name="Gilet (Retour)"),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='manivelle_retour',
-            field=models.BooleanField(default=False, verbose_name='Manivelle (Retour)'),
+            model_name="contract",
+            name="manivelle_retour",
+            field=models.BooleanField(default=False, verbose_name="Manivelle (Retour)"),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='papiers_retour',
-            field=models.BooleanField(default=False, verbose_name='Papiers (Retour)'),
+            model_name="contract",
+            name="papiers_retour",
+            field=models.BooleanField(default=False, verbose_name="Papiers (Retour)"),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='roue_secours_retour',
-            field=models.BooleanField(default=False, verbose_name='Roue de Secours (Retour)'),
+            model_name="contract",
+            name="roue_secours_retour",
+            field=models.BooleanField(
+                default=False, verbose_name="Roue de Secours (Retour)"
+            ),
         ),
         migrations.AddField(
-            model_name='contract',
-            name='triangle_retour',
-            field=models.BooleanField(default=False, verbose_name='Triangle (Retour)'),
+            model_name="contract",
+            name="triangle_retour",
+            field=models.BooleanField(default=False, verbose_name="Triangle (Retour)"),
         ),
     ]

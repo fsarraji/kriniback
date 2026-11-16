@@ -4,25 +4,35 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('clients', '0005_client_pays_client_sexe_client_ville'),
+        ("clients", "0005_client_pays_client_sexe_client_ville"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='client',
-            name='adresse',
-            field=models.TextField(blank=True, null=True, verbose_name='العنوان'),
+            model_name="client",
+            name="adresse",
+            field=models.TextField(blank=True, null=True, verbose_name="العنوان"),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='cin_passport',
-            field=models.CharField(blank=True, max_length=20, null=True, verbose_name='رقم البطاقة الوطنية أو الجواز'),
+            model_name="client",
+            name="cin_passport",
+            field=models.CharField(
+                blank=True,
+                max_length=20,
+                null=True,
+                verbose_name="رقم البطاقة الوطنية أو الجواز",
+            ),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='permis_conduite',
-            field=models.CharField(blank=True, max_length=50, null=True, unique=True, verbose_name='رقم رخصة السياقة'),
+            model_name="client",
+            name="permis_conduite",
+            field=models.CharField(
+                blank=True,
+                max_length=50,
+                null=True,
+                unique=True,
+                verbose_name="رقم رخصة السياقة",
+            ),
         ),
     ]

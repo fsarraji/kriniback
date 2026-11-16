@@ -1,36 +1,50 @@
+from datetime import timedelta
+from decimal import Decimal, InvalidOperation
+
+from django.db.models import Count, Sum
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, permissions, serializers, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from car_rental_backend.permissions import IsSuperUser
+from clients.models import Client
+from contracts.models import Contract
+from fleet.models import Brand, Vehicle
+
+from .models import Agency, CustomUser, Subscription
 from .serializers import CustomTokenObtainPairSerializer
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions
-from django.utils import timezone
-from datetime import timedelta
-from django.db.models import Sum
-
-from fleet.models import Vehicle, Brand
-from contracts.models import Contract
-from clients.models import Client
-from .models import Agency, CustomUser, Subscription
-from rest_framework import serializers, viewsets, filters
-from rest_framework.permissions import IsAdminUser
-from django_filters.rest_framework import DjangoFilterBackend
 
 class AgencySerializer(serializers.ModelSerializer):
     class Meta:
         model = Agency
-        fields = '__all__'
+        fields = "__all__"
+
 
 class UserSerializer(serializers.ModelSerializer):
-    agency_name = serializers.ReadOnlyField(source='agency.nom_agence')
-    
+    agency_name = serializers.ReadOnlyField(source="agency.nom_agence")
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'agency', 'agency_name', 'is_active', 'password']
-        extra_kwargs = {'password': {'write_only': True, 'required': False}}
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "agency",
+            "agency_name",
+            "is_active",
+            "password",
+        ]
+        extra_kwargs = {"password": {"write_only": True, "required": False}}
 
     def create(self, validated_data):
-        password = validated_data.pop('password', None)
+        password = validated_data.pop("password", None)
         user = super().create(validated_data)
         if password:
             user.set_password(password)
@@ -38,70 +52,124 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
+        password = validated_data.pop("password", None)
         user = super().update(instance, validated_data)
         if password:
             user.set_password(password)
             user.save()
         return user
 
+
 class AgencyViewSet(viewsets.ModelViewSet):
-    queryset = Agency.objects.all()
+    queryset = Agency.objects.order_by("id")
     serializer_class = AgencySerializer
-    permission_classes = [IsAdminUser]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['nom_agence', 'adresse', 'ville', 'telephone', 'email', 'rc', 'ice']
-    ordering_fields = ['nom_agence', 'id']
+    permission_classes = [IsSuperUser]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    search_fields = [
+        "nom_agence",
+        "adresse",
+        "ville",
+        "telephone",
+        "email",
+        "rc",
+        "ice",
+    ]
+    ordering_fields = ["nom_agence", "id"]
+
 
 class PublicAgencySerializer(serializers.ModelSerializer):
-    vehicles_count = serializers.IntegerField(source='vehicles.count', read_only=True)
+    vehicles_count = serializers.IntegerField(source="vehicles_total", read_only=True)
 
     class Meta:
         model = Agency
-        fields = ['id', 'nom_agence', 'adresse', 'ville', 'telephone', 'email', 'logo',
-                  'caution_active', 'caution_montant', 'km_extra_active', 'km_par_jour',
-                  'km_tarif_extra_defaut', 'vehicles_count']
+        fields = [
+            "id",
+            "nom_agence",
+            "adresse",
+            "ville",
+            "telephone",
+            "email",
+            "logo",
+            "caution_active",
+            "caution_montant",
+            "km_extra_active",
+            "km_par_jour",
+            "km_tarif_extra_defaut",
+            "vehicles_count",
+        ]
+
 
 class PublicAgencyViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Vue publique (sans authentification) des agences pour le site de réservation.
     """
-    queryset = Agency.objects.filter(is_active=True).distinct()
+
+    queryset = (
+        Agency.objects.filter(is_active=True)
+        .annotate(vehicles_total=Count("vehicles", distinct=True))
+        .order_by("id")
+    )
     serializer_class = PublicAgencySerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = None
 
+
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
+    queryset = CustomUser.objects.select_related("agency").order_by("id")
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUser]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['role', 'agency', 'is_active']
-    search_fields = ['username', 'email', 'first_name', 'last_name']
-    ordering_fields = ['username', 'id']
+    permission_classes = [IsSuperUser]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["role", "agency", "is_active"]
+    search_fields = ["username", "email", "first_name", "last_name"]
+    ordering_fields = ["username", "id"]
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
-    agency_name = serializers.ReadOnlyField(source='agency.nom_agence')
+    agency_name = serializers.ReadOnlyField(source="agency.nom_agence")
     is_current = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Subscription
-        fields = ['id', 'agency', 'agency_name', 'plan', 'price', 'start_date', 'end_date', 'status', 'is_current', 'created_at', 'updated_at']
+        fields = [
+            "id",
+            "agency",
+            "agency_name",
+            "plan",
+            "price",
+            "start_date",
+            "end_date",
+            "status",
+            "is_current",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    permission_classes = [IsAdminUser]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['agency', 'plan', 'status']
-    search_fields = ['agency__nom_agence', 'plan']
-    ordering_fields = ['start_date', 'end_date', 'price', 'id']
+    permission_classes = [IsSuperUser]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["agency", "plan", "status"]
+    search_fields = ["agency__nom_agence", "plan"]
+    ordering_fields = ["start_date", "end_date", "price", "id"]
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_scope = "login"
 
 
 class DashboardStatsView(APIView):
@@ -130,62 +198,84 @@ class DashboardStatsView(APIView):
 
         # 1. إحصائيات عامة
         total_vehicles = vehicles_qs.count()
-        available_vehicles = vehicles_qs.filter(statut='Available').count()
-        rented_vehicles = vehicles_qs.filter(statut='Rented').count()
-        maintenance_vehicles = vehicles_qs.filter(statut='Maintenance').count()
-        active_contracts = contracts_qs.filter(statut='EN_COURS').count()
+        available_vehicles = vehicles_qs.filter(statut="Available").count()
+        rented_vehicles = vehicles_qs.filter(statut="Rented").count()
+        maintenance_vehicles = vehicles_qs.filter(statut="Maintenance").count()
+        active_contracts = contracts_qs.filter(statut="EN_COURS").count()
         total_clients = clients_qs.count()
 
         # 2. المداخيل الإجمالية (هذا الشهر كمثال)
         current_month = timezone.now().month
-        revenue = contracts_qs.filter(
-            date_creation__month=current_month
-        ).aggregate(Sum('montant_total'))['montant_total__sum'] or 0
+        current_year = timezone.now().year
+        revenue = (
+            contracts_qs.filter(
+                date_creation__month=current_month, date_creation__year=current_year
+            ).aggregate(Sum("montant_total"))["montant_total__sum"]
+            or 0
+        )
 
         # 2b. tarif journalier moyen sur les contrats du mois (jours > 0)
-        monthly_contracts = contracts_qs.filter(
-            date_creation__month=current_month
-        ).exclude(jours__isnull=True).exclude(jours=0).exclude(montant_total__isnull=True)
+        monthly_contracts = (
+            contracts_qs.filter(
+                date_creation__month=current_month, date_creation__year=current_year
+            )
+            .exclude(jours__isnull=True)
+            .exclude(jours=0)
+            .exclude(montant_total__isnull=True)
+        )
         rate_values = [
             c.montant_total / c.jours
             for c in monthly_contracts
             if c.jours and c.montant_total
         ]
-        avg_daily_rate = round(sum(rate_values) / len(rate_values)) if rate_values else None
+        avg_daily_rate = (
+            round(sum(rate_values) / len(rate_values)) if rate_values else None
+        )
 
         # 3. التنبيهات (Alerts) - السيارات التي سينتهي تأمينها أو فحصها التقني قريباً (أقل من 30 يوم)
         insurance_alerts = vehicles_qs.filter(
             date_assurance__lte=thirty_days_later
-        ).values('id', 'matricule', 'marque', 'date_assurance')
+        ).values("id", "matricule", "marque", "date_assurance")
 
         visite_alerts = vehicles_qs.filter(
             date_visite_technique__lte=thirty_days_later
-        ).values('id', 'matricule', 'marque', 'date_visite_technique')
+        ).values("id", "matricule", "marque", "date_visite_technique")
 
         # 4. العقود الأخيرة (آخر 5)
-        recent_contracts = contracts_qs.order_by('-date_creation')[:5].values(
-            'id', 'client__nom', 'client__prenom', 'vehicle__marque', 'vehicle__modele', 'vehicle__matricule', 'jours', 'montant_total', 'statut'
+        recent_contracts = contracts_qs.order_by("-date_creation")[:5].values(
+            "id",
+            "client__nom",
+            "client__prenom",
+            "vehicle__marque",
+            "vehicle__modele",
+            "vehicle__matricule",
+            "jours",
+            "montant_total",
+            "statut",
         )
 
         # إرجاع البيانات على شكل JSON منظم
-        return Response({
-            'stats': {
-                'total_vehicles': total_vehicles,
-                'available_vehicles': available_vehicles,
-                'rented_vehicles': rented_vehicles,
-                'maintenance_vehicles': maintenance_vehicles,
-                'active_contracts': active_contracts,
-                'total_clients': total_clients,
-                'revenue_this_month': revenue,
-                'avg_daily_rate': avg_daily_rate,
-                'agency_name': agency.nom_agence if agency else "Super Admin"
-            },
-            'alerts': {
-                'insurance_expiring': list(insurance_alerts),
-                'visite_expiring': list(visite_alerts)
-            },
-            'recent_contracts': list(recent_contracts)
-        })
+        return Response(
+            {
+                "stats": {
+                    "total_vehicles": total_vehicles,
+                    "available_vehicles": available_vehicles,
+                    "rented_vehicles": rented_vehicles,
+                    "maintenance_vehicles": maintenance_vehicles,
+                    "active_contracts": active_contracts,
+                    "total_clients": total_clients,
+                    "revenue_this_month": revenue,
+                    "avg_daily_rate": avg_daily_rate,
+                    "agency_name": agency.nom_agence if agency else "Super Admin",
+                },
+                "alerts": {
+                    "insurance_expiring": list(insurance_alerts),
+                    "visite_expiring": list(visite_alerts),
+                },
+                "recent_contracts": list(recent_contracts),
+            }
+        )
+
 
 def _agency_settings_payload(agency, request):
     traccar_url = (agency.traccar_url or "").strip()
@@ -205,13 +295,16 @@ def _agency_settings_payload(agency, request):
         "km_extra_active": agency.km_extra_active,
         "km_par_jour": agency.km_par_jour,
         "km_tarif_extra_defaut": str(agency.km_tarif_extra_defaut),
-        "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url) if agency.cachet_signature else None,
-        "brands": list(agency.brands.values_list('id', flat=True)),
+        "cachet_signature": request.build_absolute_uri(agency.cachet_signature.url)
+        if agency.cachet_signature
+        else None,
+        "brands": list(agency.brands.values_list("id", flat=True)),
         "traccar_url": traccar_url,
         "traccar_username": traccar_username,
         "traccar_password_set": bool(agency.traccar_password),
         "traccar_configured": traccar_configured,
         "location_buffer_hours": int(agency.location_buffer_hours),
+        "tva_rate": str(agency.tva_rate),
     }
 
 
@@ -226,58 +319,79 @@ class AgencySettingsView(APIView):
     def put(self, request):
         if not request.user.agency:
             return Response({"error": "No agency attached"}, status=400)
-        
+
         # Only owner or superadmin can modify
-        if request.user.role != 'OWNER' and not request.user.is_superuser:
-            return Response({"error": "Permission denied. Only Owner can modify settings."}, status=403)
-            
+        if request.user.role != "OWNER" and not request.user.is_superuser:
+            return Response(
+                {"error": "Permission denied. Only Owner can modify settings."},
+                status=403,
+            )
+
         agency = request.user.agency
-        
-        if 'email' in request.data:
-            agency.email = (str(request.data['email']).strip() or None)
 
-        if 'telephone' in request.data:
-            agency.telephone = str(request.data['telephone']).strip()
+        if "email" in request.data:
+            agency.email = str(request.data["email"]).strip() or None
 
-        if 'adresse' in request.data:
-            agency.adresse = str(request.data['adresse']).strip()
+        if "telephone" in request.data:
+            agency.telephone = str(request.data["telephone"]).strip()
 
-        if 'ville' in request.data:
-            agency.ville = str(request.data['ville']).strip()
+        if "adresse" in request.data:
+            agency.adresse = str(request.data["adresse"]).strip()
 
-        if 'caution_active' in request.data:
-            agency.caution_active = str(request.data['caution_active']).lower() in ['true', '1', 't', 'y', 'yes']
-            
-        if 'caution_montant' in request.data:
+        if "ville" in request.data:
+            agency.ville = str(request.data["ville"]).strip()
+
+        if "caution_active" in request.data:
+            agency.caution_active = str(request.data["caution_active"]).lower() in [
+                "true",
+                "1",
+                "t",
+                "y",
+                "yes",
+            ]
+
+        if "caution_montant" in request.data:
             try:
-                agency.caution_montant = float(request.data['caution_montant'])
+                agency.caution_montant = float(request.data["caution_montant"])
             except ValueError:
                 pass
 
-        if 'km_extra_active' in request.data:
-            agency.km_extra_active = str(request.data['km_extra_active']).lower() in ['true', '1', 't', 'y', 'yes']
+        if "km_extra_active" in request.data:
+            agency.km_extra_active = str(request.data["km_extra_active"]).lower() in [
+                "true",
+                "1",
+                "t",
+                "y",
+                "yes",
+            ]
 
-        if 'km_par_jour' in request.data:
+        if "km_par_jour" in request.data:
             try:
-                agency.km_par_jour = int(request.data['km_par_jour'])
+                agency.km_par_jour = int(request.data["km_par_jour"])
             except (ValueError, TypeError):
                 pass
 
-        if 'km_tarif_extra_defaut' in request.data:
+        if "km_tarif_extra_defaut" in request.data:
             try:
-                agency.km_tarif_extra_defaut = float(request.data['km_tarif_extra_defaut'])
+                agency.km_tarif_extra_defaut = float(
+                    request.data["km_tarif_extra_defaut"]
+                )
             except (ValueError, TypeError):
                 pass
 
-        if 'cachet_signature' in request.FILES:
-            agency.cachet_signature = request.FILES['cachet_signature']
+        if "cachet_signature" in request.FILES:
+            agency.cachet_signature = request.FILES["cachet_signature"]
 
-        if 'logo' in request.FILES:
-            agency.logo = request.FILES['logo']
+        if "logo" in request.FILES:
+            agency.logo = request.FILES["logo"]
 
-        if 'brands' in request.data:
+        if "brands" in request.data:
             # Supporte à la fois list JSON (axios) et QueryDict multi-valeurs (FormData)
-            raw = request.data.getlist('brands') if hasattr(request.data, 'getlist') else request.data.get('brands')
+            raw = (
+                request.data.getlist("brands")
+                if hasattr(request.data, "getlist")
+                else request.data.get("brands")
+            )
             if isinstance(raw, str):
                 raw = [raw]
             brand_ids = []
@@ -288,23 +402,33 @@ class AgencySettingsView(APIView):
                     continue
             agency.brands.set(Brand.objects.filter(id__in=brand_ids))
 
-        if 'location_buffer_hours' in request.data:
+        if "tva_rate" in request.data:
             try:
-                val = float(request.data['location_buffer_hours'])
+                rate = Decimal(str(request.data["tva_rate"]))
+                if 0 <= rate <= 100:
+                    agency.tva_rate = rate
+            except (InvalidOperation, ValueError, TypeError):
+                pass
+
+        if "location_buffer_hours" in request.data:
+            try:
+                val = float(request.data["location_buffer_hours"])
                 if val >= 0:
                     agency.location_buffer_hours = val
             except (ValueError, TypeError):
                 pass
 
         # Configuration Traccar (compte par agence)
-        if 'traccar_url' in request.data:
-            agency.traccar_url = (str(request.data['traccar_url']).strip() or None)
+        if "traccar_url" in request.data:
+            agency.traccar_url = str(request.data["traccar_url"]).strip() or None
 
-        if 'traccar_username' in request.data:
-            agency.traccar_username = (str(request.data['traccar_username']).strip() or None)
+        if "traccar_username" in request.data:
+            agency.traccar_username = (
+                str(request.data["traccar_username"]).strip() or None
+            )
 
-        if 'traccar_password' in request.data:
-            value = request.data['traccar_password']
+        if "traccar_password" in request.data:
+            value = request.data["traccar_password"]
             if value is None:
                 agency.traccar_password = None
             else:
@@ -312,16 +436,23 @@ class AgencySettingsView(APIView):
                 if value:
                     agency.traccar_password = value
 
-        if str(request.data.get('traccar_clear_password', '')).lower() in ['true', '1', 'yes', 'on']:
+        if str(request.data.get("traccar_clear_password", "")).lower() in [
+            "true",
+            "1",
+            "yes",
+            "on",
+        ]:
             agency.traccar_password = None
 
         agency.save()
-        agency.refresh_from_db(fields=['brands'])
-        
-        return Response({
-            "message": "Settings updated",
-            **_agency_settings_payload(agency, request),
-        })
+        agency.refresh_from_db(fields=["brands"])
+
+        return Response(
+            {
+                "message": "Settings updated",
+                **_agency_settings_payload(agency, request),
+            }
+        )
 
 
 def user_payload(user):
@@ -331,7 +462,7 @@ def user_payload(user):
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
-        "role": 'SUPERADMIN' if user.is_superuser else user.role,
+        "role": "SUPERADMIN" if user.is_superuser else user.role,
         "agency_id": user.agency.id if user.agency else None,
         "agency_name": user.agency.nom_agence if user.agency else None,
     }
@@ -339,6 +470,7 @@ def user_payload(user):
 
 class AccountMeView(APIView):
     """Compte de l'utilisateur connecté (staff / owner / superadmin)."""
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -348,28 +480,44 @@ class AccountMeView(APIView):
         user = request.user
         data = request.data
 
-        if 'username' in data:
-            username = str(data['username']).strip()
+        if "username" in data:
+            username = str(data["username"]).strip()
             if not username:
-                return Response({"username": "Le nom d'utilisateur est requis."}, status=400)
-            if CustomUser.objects.exclude(pk=user.pk).filter(username=username).exists():
-                return Response({"username": "Ce nom d'utilisateur est déjà pris."}, status=400)
+                return Response(
+                    {"username": "Le nom d'utilisateur est requis."}, status=400
+                )
+            if (
+                CustomUser.objects.exclude(pk=user.pk)
+                .filter(username=username)
+                .exists()
+            ):
+                return Response(
+                    {"username": "Ce nom d'utilisateur est déjà pris."}, status=400
+                )
             user.username = username
 
-        if 'first_name' in data:
-            user.first_name = str(data['first_name'])[:150]
-        if 'last_name' in data:
-            user.last_name = str(data['last_name'])[:150]
-        if 'email' in data:
-            user.email = str(data['email']).strip() or None
+        if "first_name" in data:
+            user.first_name = str(data["first_name"])[:150]
+        if "last_name" in data:
+            user.last_name = str(data["last_name"])[:150]
+        if "email" in data:
+            user.email = str(data["email"]).strip() or None
 
-        new_password = data.get('new_password')
+        new_password = data.get("new_password")
         if new_password:
-            current_password = data.get('current_password', '')
+            current_password = data.get("current_password", "")
             if not current_password or not user.check_password(str(current_password)):
-                return Response({"current_password": "Le mot de passe actuel est incorrect."}, status=400)
+                return Response(
+                    {"current_password": "Le mot de passe actuel est incorrect."},
+                    status=400,
+                )
             if len(str(new_password)) < 6:
-                return Response({"new_password": "Le mot de passe doit contenir au moins 6 caractères."}, status=400)
+                return Response(
+                    {
+                        "new_password": "Le mot de passe doit contenir au moins 6 caractères."
+                    },
+                    status=400,
+                )
             user.set_password(str(new_password))
 
         user.save()

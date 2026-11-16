@@ -4,25 +4,30 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('clients', '0001_initial'),
+        ("clients", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='client',
-            name='date_expiration_cin',
-            field=models.DateField(blank=True, null=True, verbose_name='تاريخ انتهاء صلاحية الوثيقة'),
+            model_name="client",
+            name="date_expiration_cin",
+            field=models.DateField(
+                blank=True, null=True, verbose_name="تاريخ انتهاء صلاحية الوثيقة"
+            ),
         ),
         migrations.AddField(
-            model_name='client',
-            name='nationalite',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='الجنسية'),
+            model_name="client",
+            name="nationalite",
+            field=models.CharField(
+                blank=True, max_length=50, null=True, verbose_name="الجنسية"
+            ),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='cin_passport',
-            field=models.CharField(max_length=20, verbose_name='رقم البطاقة الوطنية أو الجواز'),
+            model_name="client",
+            name="cin_passport",
+            field=models.CharField(
+                max_length=20, verbose_name="رقم البطاقة الوطنية أو الجواز"
+            ),
         ),
     ]

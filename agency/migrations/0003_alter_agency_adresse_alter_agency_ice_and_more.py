@@ -4,55 +4,73 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agency', '0002_agency_ice_agency_rc'),
+        ("agency", "0002_agency_ice_agency_rc"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='agency',
-            name='adresse',
-            field=models.TextField(verbose_name='Adresse'),
+            model_name="agency",
+            name="adresse",
+            field=models.TextField(verbose_name="Adresse"),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='ice',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="Identifiant Commun de l'Entreprise (ICE)"),
+            model_name="agency",
+            name="ice",
+            field=models.CharField(
+                blank=True,
+                max_length=50,
+                null=True,
+                verbose_name="Identifiant Commun de l'Entreprise (ICE)",
+            ),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="agency",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='is_active',
-            field=models.BooleanField(default=True, verbose_name='Compte actif'),
+            model_name="agency",
+            name="is_active",
+            field=models.BooleanField(default=True, verbose_name="Compte actif"),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='nom_agence',
+            model_name="agency",
+            name="nom_agence",
             field=models.CharField(max_length=100, verbose_name="Nom de l'agence"),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='rc',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Registre du Commerce (RC)'),
+            model_name="agency",
+            name="rc",
+            field=models.CharField(
+                blank=True,
+                max_length=50,
+                null=True,
+                verbose_name="Registre du Commerce (RC)",
+            ),
         ),
         migrations.AlterField(
-            model_name='agency',
-            name='telephone',
-            field=models.CharField(max_length=20, verbose_name='Téléphone'),
+            model_name="agency",
+            name="telephone",
+            field=models.CharField(max_length=20, verbose_name="Téléphone"),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='id',
-            field=models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            model_name="customuser",
+            name="id",
+            field=models.AutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='role',
-            field=models.CharField(choices=[('OWNER', 'Gérant / Propriétaire'), ('EMPLOYEE', 'Employé')], default='EMPLOYEE', max_length=20, verbose_name='Rôle'),
+            model_name="customuser",
+            name="role",
+            field=models.CharField(
+                choices=[("OWNER", "Gérant / Propriétaire"), ("EMPLOYEE", "Employé")],
+                default="EMPLOYEE",
+                max_length=20,
+                verbose_name="Rôle",
+            ),
         ),
     ]

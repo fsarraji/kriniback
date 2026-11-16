@@ -23,7 +23,7 @@ RUN fc-cache -f -v
 # Set working directory
 WORKDIR /app
 
-# Install Python Python 
+# Install Python Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
