@@ -183,14 +183,14 @@ STATIC_URL = "static/"
 _DEFAULT_FRONT = ",".join(
     [
         "https://krinifrontweb.vercel.app",
-        "https://krikar.ma",
-        "https://www.krikar.ma",
+        "https://kricar.ma",
+        "https://www.kricar.ma",
     ]
 )
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", _DEFAULT_FRONT)
-# Sous-domaines du domaine de production (ex. app.krikar.ma) autorisés par défaut.
+# Sous-domaines du domaine de production (ex. app.kricar.ma) autorisés par défaut.
 CORS_ALLOWED_ORIGIN_REGEXES = _env_list(
-    "CORS_ALLOWED_ORIGIN_REGEXES", r"^https://([a-z0-9-]+\.)*krikar\.ma$"
+    "CORS_ALLOWED_ORIGIN_REGEXES", r"^https://([a-z0-9-]+\.)*kricar\.ma$"
 )
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS", _DEFAULT_FRONT)
