@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -19,7 +21,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-import os
 
 try:
     from dotenv import load_dotenv
@@ -147,7 +148,7 @@ if not DATABASES.get("default"):
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # noqa: E501
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -178,10 +179,12 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 # Origines autorisées : CORS_ALLOWED_ORIGINS="https://a.com,https://b.com"
-CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS")
+# Par défaut : le front de production (surchargé par la variable d'environnement).
+_DEFAULT_FRONT = "https://krinifrontweb.vercel.app"
+CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", _DEFAULT_FRONT)
 CORS_ALLOWED_ORIGIN_REGEXES = _env_list("CORS_ALLOWED_ORIGIN_REGEXES")
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS", _DEFAULT_FRONT)
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -258,13 +261,12 @@ if os.getenv("SENTRY_DSN"):
         pass
 
 # Configuration du serveur Traccar (suivi GPS des véhicules)
-# Exemple : TRACCAR_URL=http://localhost:8082, TRACCAR_USER=admin, TRACCAR_PASSWORD=admin
+# Exemple : TRACCAR_URL=http://localhost:8082, TRACCAR_USER=admin, TRACCAR_PASSWORD=admin  # noqa: E501
 TRACCAR_URL = os.getenv("TRACCAR_URL", "http://localhost:8082").rstrip("/")
 TRACCAR_USER = os.getenv("TRACCAR_USER", "")
 TRACCAR_PASSWORD = os.getenv("TRACCAR_PASSWORD", "")
 
 # 2. إعدادات مكتبة SimpleJWT (تحديد مدة صلاحية التوكن)
-from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),  # التوكن يعيش لمدة ساعة (للأمان)
@@ -304,7 +306,7 @@ AWS_S3_REGION_NAME = os.getenv(
 # إذا تم توفير إعدادات S3، نستخدم django-storages
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     # Use django-storages with S3 backend
-    # Django >= 5.1 : STORAGES['default'] est la config canonique (DEFAULT_FILE_STORAGE est legacy/ignoré)
+    # Django >= 5.1 : STORAGES['default'] est la config canonique (DEFAULT_FILE_STORAGE est legacy/ignoré)  # noqa: E501
     DEFAULT_FILE_STORAGE = "car_rental_backend.storage.OptimizedS3Storage"
     STORAGES = {
         "default": {"BACKEND": DEFAULT_FILE_STORAGE},
@@ -331,7 +333,7 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     AWS_S3_ADDRESSING_STYLE = "path"
     AWS_S3_SIGNATURE_VERSION = "s3v4"
 
-    # Public URL for images (readable bucket) — e.g. <ref>.supabase.co/storage/v1/object/public/<bucket>
+    # Public URL for images (readable bucket) — e.g. <ref>.supabase.co/storage/v1/object/public/<bucket>  # noqa: E501
     AWS_S3_CUSTOM_DOMAIN = os.getenv("AWS_S3_CUSTOM_DOMAIN") or (
         f"{AWS_S3_ENDPOINT_URL.replace('https://', '').replace('/storage/v1/s3', '')}"
         f"/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
