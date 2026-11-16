@@ -51,8 +51,35 @@ class AvailabilityLockTests(TestCase):
 
     def test_free_far_future(self):
         now = timezone.now()
-        # TestCase enveloppe dans une transaction ; on vérifie seulement le chemin nominal ici.
+        # TestCase enveloppe dans une transaction : on vérifie le chemin nominal.
         with transaction.atomic():
             assert_vehicle_free(
                 self.vehicle, now + timedelta(days=90), now + timedelta(days=91)
             )
+
+
+class BookingThrottleScopeTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        _, self.owner, _ = setup_agency("T")
+
+    def test_staff_listing_is_not_throttled(self):
+        from rest_framework.test import APIClient
+
+        api = APIClient()
+        api.force_authenticate(self.owner)
+        # public_write = 20/heure : 30 consultations ne doivent jamais renvoyer 429
+        codes = {api.get("/api/booking-requests/").status_code for _ in range(30)}
+        self.assertEqual(codes, {200})
+
+    def test_public_creation_stays_throttled(self):
+        from rest_framework.test import APIClient
+
+        anon = APIClient()
+        codes = [
+            anon.post("/api/booking-requests/", {}, format="json").status_code
+            for _ in range(25)
+        ]
+        self.assertIn(429, codes)

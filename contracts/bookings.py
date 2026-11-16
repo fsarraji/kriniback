@@ -34,6 +34,14 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
+    def get_throttles(self):
+        # Seule la création publique (anti-spam) est limitée : le personnel authentifié
+        # consulte cette liste à chaque page (cloche de notifications, écran
+        # Réservations).
+        if self.action != "create":
+            return []
+        return super().get_throttles()
+
     def get_queryset(self):
         if self.request.user.is_superuser:
             return BookingRequest.objects.all()
@@ -83,7 +91,10 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
                 telephone=booking.telephone,
                 email=booking.email or "",
                 adresse="",
-                remarques=f"Créé automatiquement depuis la demande de réservation #{booking.id}",
+                remarques=(
+                    "Créé automatiquement depuis la demande de réservation "
+                    f"#{booking.id}"
+                ),
             )
 
         # 3. Calcul de la durée
@@ -128,8 +139,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
     """
     Réservations des clients.
 
-    - Un client connecté peut créer sa réservation, consulter les siennes et annuler une réservation en attente.
-    - Le personnel de l'agence voit les réservations de son agence et peut les confirmer (→ contrat RESERVE).
+    - Un client connecté peut créer sa réservation, consulter les siennes et
+      annuler une réservation en attente.
+    - Le personnel de l'agence voit les réservations de son agence et peut les
+      confirmer (→ contrat RESERVE).
     """
 
     serializer_class = ReservationSerializer
@@ -204,7 +217,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
             if reservation.statut != "PENDING":
                 return Response(
                     {
-                        "detail": "Vous ne pouvez supprimer qu'une réservation en attente."
+                        "detail": (
+                            "Vous ne pouvez supprimer qu'une réservation en attente."
+                        )
                     },
                     status=status.HTTP_403_FORBIDDEN,
                 )
@@ -241,7 +256,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
             ):
                 return Response(
                     {
-                        "detail": "Seul le gérant de la société peut annuler une réservation confirmée."
+                        "detail": (
+                            "Seul le gérant de la société peut annuler une "
+                            "réservation confirmée."
+                        )
                     },
                     status=status.HTTP_403_FORBIDDEN,
                 )
