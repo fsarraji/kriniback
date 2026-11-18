@@ -6,7 +6,8 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from agency.models import Agency, CustomUser
-from car_rental_backend.uploads import pdf_job_upload_to
+from car_rental_backend.uploads import contract_photo_upload_to, pdf_job_upload_to
+from car_rental_backend.validators import validate_image_size
 from clients.models import Client
 from fleet.models import Vehicle
 
@@ -165,6 +166,11 @@ class Contract(models.Model):
     reste_a_payer = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, verbose_name="المبلغ المتبقي"
     )
+    # Frais ajoutés après coup (retard, carburant, dommages, amendes...) : somme des
+    # ContractFee, tenue à jour par ContractFee.save()/delete().
+    frais_supplementaires = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, verbose_name="Frais supplémentaires"
+    )
     caution = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -227,7 +233,9 @@ class Contract(models.Model):
                 self.montant_total = self.prix_par_jour * self.jours
         elif self.prix_par_jour and self.jours:
             self.montant_total = self.prix_par_jour * self.jours
-        self.reste_a_payer = self.montant_total - self.montant_paye
+        self.reste_a_payer = (
+            self.montant_total + self.frais_supplementaires - self.montant_paye
+        )
 
         # 2. تحديث الكيلومتراج الخاص بالسيارة إذا تم إرجاعها
         if self.statut == "TERMINE" and self.km_retour:
@@ -296,6 +304,98 @@ class ContractDamage(models.Model):
 
     def __str__(self):
         return f"Damage {self.type} for Contract {self.contract.id} at ({self.x}, {self.y})"
+
+
+class ContractFee(models.Model):
+    """Frais supplémentaire facturé sur un contrat (s'ajoute au reste à payer)."""
+
+    KIND_CHOICES = [
+        ("RETARD", "Retard de restitution"),
+        ("CARBURANT", "Carburant manquant"),
+        ("KM_EXTRA", "Kilométrage supplémentaire"),
+        ("DOMMAGE", "Dommage / réparation"),
+        ("AMENDE", "Amende / contravention"),
+        ("AUTRE", "Autre"),
+    ]
+
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name="+")
+    contract = models.ForeignKey(
+        Contract, on_delete=models.CASCADE, related_name="fees"
+    )
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES, default="AUTRE")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField(max_length=255, blank=True, default="")
+    date = models.DateField(default=timezone.localdate)
+    created_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-date", "-id"]
+        indexes = [models.Index(fields=["contract"], name="contractfee_contract_idx")]
+
+    def _sync_contract(self):
+        """Recalcule frais_supplementaires puis le reste à payer (verrou de ligne)."""
+        from django.db.models import Sum
+
+        contract = Contract.objects.select_for_update().get(pk=self.contract_id)
+        total = ContractFee.objects.filter(contract=contract).aggregate(
+            t=Sum("amount")
+        )["t"]
+        contract.frais_supplementaires = total or Decimal("0.00")
+        contract.save()
+
+    def save(self, *args, **kwargs):
+        from django.db import transaction
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            self._sync_contract()
+
+    def delete(self, *args, **kwargs):
+        from django.db import transaction
+
+        with transaction.atomic():
+            result = super().delete(*args, **kwargs)
+            self._sync_contract()
+            return result
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.amount} (contrat {self.contract_id})"
+
+
+class ContractPhoto(models.Model):
+    """Photo d'état des lieux (départ, retour) ou de dommage."""
+
+    KIND_CHOICES = [
+        ("DEPART", "Départ"),
+        ("RETOUR", "Retour"),
+        ("DOMMAGE", "Dommage"),
+    ]
+
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name="+")
+    contract = models.ForeignKey(
+        Contract, on_delete=models.CASCADE, related_name="photos"
+    )
+    kind = models.CharField(max_length=8, choices=KIND_CHOICES, default="DEPART")
+    image = models.ImageField(
+        upload_to=contract_photo_upload_to, validators=[validate_image_size]
+    )
+    caption = models.CharField(max_length=200, blank=True, default="")
+    uploaded_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["contract"], name="contractphoto_contract_idx")]
+
+    def __str__(self):
+        return f"Photo {self.kind} (contrat {self.contract_id})"
 
 
 class BookingRequest(models.Model):

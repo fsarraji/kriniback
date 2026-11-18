@@ -88,3 +88,11 @@ def expense_receipt_upload_to(instance, filename):
 def pdf_job_upload_to(instance, filename):
     name = _safe_filename(filename)
     return f"{agency_segment(instance)}/pdf_jobs/{name}"
+
+
+def contract_photo_upload_to(instance, filename):
+    """Nom aléatoire (non devinable) : les photos de contrat contiennent des données clients."""
+    import uuid
+
+    ext = os.path.splitext(filename or "")[1].lower()[:6] or ".jpg"
+    return f"{agency_segment(instance)}/contract_photos/{uuid.uuid4().hex}{ext}"

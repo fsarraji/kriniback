@@ -24,12 +24,28 @@ from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image, ImageDraw, ImageFont
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+
+from car_rental_backend.permissions import IsAgencyStaff
 
 from .bookings import BookingRequestViewSet  # noqa: F401 (ré-export)
 from .bookings import ReservationViewSet
-from .models import Contract, ContractDamage, PdfJob, Reservation, _release_vehicle
-from .serializers import ContractSerializer, PdfJobSerializer
+from .models import (
+    Contract,
+    ContractDamage,
+    ContractFee,
+    ContractPhoto,
+    PdfJob,
+    Reservation,
+    _release_vehicle,
+)
+from .serializers import (
+    ContractFeeSerializer,
+    ContractPhotoSerializer,
+    ContractSerializer,
+    PdfJobSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -869,3 +885,54 @@ class PdfJobViewSet(viewsets.ModelViewSet):
         )
         response["Content-Disposition"] = f'inline; filename="{filename}"'
         return response
+
+
+class _AgencyScopedMixin:
+    """Filtre par agence ; l'agence et l'auteur sont posés côté serveur."""
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        return qs if user.is_superuser else qs.filter(agency=user.agency)
+
+    def _agency(self):
+        agency = self.request.user.agency
+        if agency is None:
+            from rest_framework.exceptions import ValidationError
+
+            raise ValidationError({"detail": "Compte non lié à une agence."})
+        return agency
+
+
+class ContractFeeViewSet(_AgencyScopedMixin, viewsets.ModelViewSet):
+    queryset = ContractFee.objects.select_related("contract")
+    serializer_class = ContractFeeSerializer
+    permission_classes = [IsAgencyStaff]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["contract", "kind"]
+    http_method_names = ["get", "post", "delete", "head", "options"]
+
+    def perform_create(self, serializer):
+        serializer.save(agency=self._agency(), created_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        # Supprimer un frais modifie le dû du client : réservé au gérant.
+        user = self.request.user
+        if not (user.is_superuser or user.role == "OWNER"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Seul le gérant peut supprimer un frais.")
+        instance.delete()
+
+
+class ContractPhotoViewSet(_AgencyScopedMixin, viewsets.ModelViewSet):
+    queryset = ContractPhoto.objects.select_related("contract")
+    serializer_class = ContractPhotoSerializer
+    permission_classes = [IsAgencyStaff]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["contract", "kind"]
+    http_method_names = ["get", "post", "delete", "head", "options"]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        serializer.save(agency=self._agency(), uploaded_by=self.request.user)

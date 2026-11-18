@@ -5,7 +5,15 @@ from rest_framework import serializers
 from car_rental_backend.permissions import check_same_agency
 
 from .availability import agency_buffer
-from .models import BookingRequest, Contract, ContractDamage, PdfJob, Reservation
+from .models import (
+    BookingRequest,
+    Contract,
+    ContractDamage,
+    ContractFee,
+    ContractPhoto,
+    PdfJob,
+    Reservation,
+)
 
 
 def _make_aware(dt):
@@ -237,7 +245,13 @@ class ContractSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contract
         fields = "__all__"
-        read_only_fields = ["agency", "created_by", "montant_total", "reste_a_payer"]
+        read_only_fields = [
+            "agency",
+            "created_by",
+            "montant_total",
+            "reste_a_payer",
+            "frais_supplementaires",
+        ]
 
     def create(self, validated_data):
         damages_data = validated_data.pop("damages", [])
@@ -359,3 +373,52 @@ class ContractSerializer(serializers.ModelSerializer):
         elif obj.montant_paye > 0:
             return "Partial"
         return "Unpaid"
+
+
+MAX_PHOTOS_PER_CONTRACT = 40
+
+
+class ContractFeeSerializer(serializers.ModelSerializer):
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+
+    class Meta:
+        model = ContractFee
+        fields = [
+            "id",
+            "contract",
+            "kind",
+            "kind_label",
+            "amount",
+            "description",
+            "date",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+    def validate_amount(self, amount):
+        if amount <= 0:
+            raise serializers.ValidationError("Le montant doit être supérieur à zéro.")
+        return amount
+
+    def validate_contract(self, contract):
+        check_same_agency(self.context.get("request"), contract, "contract")
+        if contract.statut == "ANNULE":
+            raise serializers.ValidationError(
+                "Impossible d'ajouter des frais à un contrat annulé."
+            )
+        return contract
+
+
+class ContractPhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractPhoto
+        fields = ["id", "contract", "kind", "image", "caption", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def validate_contract(self, contract):
+        check_same_agency(self.context.get("request"), contract, "contract")
+        if contract.photos.count() >= MAX_PHOTOS_PER_CONTRACT:
+            raise serializers.ValidationError(
+                f"Maximum {MAX_PHOTOS_PER_CONTRACT} photos par contrat."
+            )
+        return contract

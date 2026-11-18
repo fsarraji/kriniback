@@ -26,6 +26,8 @@ from clients.views import (
 )
 from contracts.views import (
     BookingRequestViewSet,
+    ContractFeeViewSet,
+    ContractPhotoViewSet,
     ContractViewSet,
     PdfJobViewSet,
     ReservationViewSet,
@@ -62,6 +64,8 @@ router.register(r"brands", BrandViewSet, basename="brand")
 router.register(r"modelcars", ModelCarViewSet, basename="modelcar")
 router.register(r"clients", ClientViewSet, basename="client")
 router.register(r"contracts", ContractViewSet, basename="contract")
+router.register(r"contract-fees", ContractFeeViewSet, basename="contract-fee")
+router.register(r"contract-photos", ContractPhotoViewSet, basename="contract-photo")
 router.register(r"pdf-jobs", PdfJobViewSet, basename="pdf-job")
 router.register(r"booking-requests", BookingRequestViewSet, basename="booking-request")
 router.register(r"reservations", ReservationViewSet, basename="reservation")

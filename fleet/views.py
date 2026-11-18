@@ -196,6 +196,66 @@ class VehicleViewSet(viewsets.ModelViewSet):
         obj.save(update_fields=["is_deleted"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=["get"], url_path="free")
+    def free(self, request):
+        """Véhicules de l'agence libres sur [start, end] (contrats et réservations,
+        délai de confort inclus). start / end : YYYY-MM-DD ou ISO. Réponse : {"ids": [...]}.
+        """
+        from datetime import datetime, time
+
+        from django.utils import timezone
+        from django.utils.dateparse import parse_date, parse_datetime
+
+        from contracts.availability import agency_buffer
+        from contracts.models import Contract, Reservation
+
+        def parse(value, end_of_day=False):
+            if not value:
+                return None
+            moment = parse_datetime(value)
+            if moment is None:
+                day = parse_date(value)
+                if day is None:
+                    return None
+                moment = datetime.combine(day, time.max if end_of_day else time.min)
+            if timezone.is_naive(moment):
+                moment = timezone.make_aware(moment)
+            return moment
+
+        start = parse(request.query_params.get("start"))
+        end = parse(request.query_params.get("end"), end_of_day=True)
+        if start is None or end is None or end <= start:
+            return Response(
+                {"detail": "Paramètres start et end requis (end après start)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        agency = request.user.agency
+        if agency is None and not request.user.is_superuser:
+            return Response({"ids": []})
+        vehicles = Vehicle.objects.filter(is_deleted=False, is_archived=False)
+        if agency is not None:
+            vehicles = vehicles.filter(agency=agency)
+        vehicles = vehicles.exclude(statut="Maintenance")
+
+        pad = agency_buffer(agency)
+        overlap = {
+            "date_sortie__lt": end + pad,
+            "date_retour_prevue__gt": start - pad,
+        }
+        busy_contracts = Contract.objects.filter(
+            statut__in=["RESERVE", "EN_COURS"], **overlap
+        ).values("vehicle_id")
+        busy_reservations = Reservation.objects.filter(
+            statut__in=["PENDING", "CONFIRMED"], **overlap
+        ).values("vehicle_id")
+        free_ids = (
+            vehicles.exclude(id__in=busy_contracts)
+            .exclude(id__in=busy_reservations)
+            .values_list("id", flat=True)
+        )
+        return Response({"ids": list(free_ids)})
+
     @action(detail=True, methods=["get"], url_path="price-quote")
     def price_quote(self, request, pk=None):
         """Devis du tarif de location pour une période : somme des prix
