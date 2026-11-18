@@ -102,6 +102,7 @@ def vehicles_outside(agency, positions=None):
 
 def check_geofences(agency, positions=None, now=None):
     """Crée les alertes GEOFENCE manquantes (1 par contrat et par jour). Retourne les nouvelles."""
+    from agency.alert_texts import render_alert
     from agency.models import Notification
 
     now = now or timezone.now()
@@ -109,17 +110,24 @@ def check_geofences(agency, positions=None, now=None):
     created = []
     for item in vehicles_outside(agency, positions=positions):
         km = item["distance_outside_m"] / 1000
+        params = {
+            "plate": item["matricule"],
+            "contract": item["contract_id"],
+            "client": item["client"],
+            "km": f"{km:.1f}",
+            "zone": item["nearest_zone"],
+        }
+        title, message = render_alert("GEOFENCE", params, "fr")
         notif, is_new = Notification.objects.get_or_create(
             agency=agency,
             dedup_key=f"GEOFENCE:{item['contract_id']}:{day}",
             defaults={
                 "kind": "GEOFENCE",
                 "level": "CRITICAL",
-                "title": f"Hors zone autorisée - {item['matricule']}",
-                "message": (
-                    f"Contrat #{item['contract_id']} ({item['client']}) : le véhicule "
-                    f"{item['matricule']} est à {km:.1f} km de la zone « {item['nearest_zone']} »."
-                ),
+                "code": "GEOFENCE",
+                "params": params,
+                "title": title,
+                "message": message,
                 "vehicle_id": item["vehicle_id"],
                 "contract_id": item["contract_id"],
             },

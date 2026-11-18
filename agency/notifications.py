@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from contracts.models import Contract
 from fleet.models import Vehicle
 
+from .alert_texts import lang_from_request, render_alert
 from .models import Agency, Notification
 
 logger = logging.getLogger(__name__)
@@ -22,9 +23,19 @@ VIDANGE_MARGIN_KM = 500
 RETURN_SOON_HOURS = 24
 
 
-def _add(agency, created, dedup_key, **fields):
+def _add(agency, created, dedup_key, code, params, **fields):
+    """Crée l'alerte si elle n'existe pas. title/message sont stockés en français."""
+    title, message = render_alert(code, params, "fr")
     notif, is_new = Notification.objects.get_or_create(
-        agency=agency, dedup_key=dedup_key, defaults=fields
+        agency=agency,
+        dedup_key=dedup_key,
+        defaults={
+            **fields,
+            "code": code,
+            "params": params,
+            "title": title,
+            "message": message,
+        },
     )
     if is_new:
         created.append(notif)
@@ -41,26 +52,27 @@ def generate_alerts_for_agency(agency, now=None):
         agency=agency, is_deleted=False, is_archived=False
     )
 
-    for field, kind, label in (
-        ("date_assurance", "INSURANCE", "Assurance"),
-        ("date_visite_technique", "VISITE", "Visite technique"),
+    for field, kind in (
+        ("date_assurance", "INSURANCE"),
+        ("date_visite_technique", "VISITE"),
     ):
+        prefix = "INSURANCE" if kind == "INSURANCE" else "VISITE"
         for v in vehicles.filter(**{f"{field}__lte": horizon}):
             d = getattr(v, field)
             days = (d - today).days
             expired = days < 0
-            if expired:
-                detail = f"expirée depuis {-days} jour(s)."
-            else:
-                detail = f"expire dans {days} jour(s) ({d})."
             _add(
                 agency,
                 created,
                 f"{kind}:{v.id}:{d.isoformat()}",
+                f"{prefix}_{'EXPIRED' if expired else 'SOON'}",
+                {
+                    "plate": v.matricule,
+                    "days": -days if expired else days,
+                    "date": d.isoformat(),
+                },
                 kind=kind,
                 level="CRITICAL" if expired or days <= 7 else "WARNING",
-                title=f"{label} {'expirée' if expired else 'bientôt expirée'} - {v.matricule}",
-                message=f"{label} du véhicule {v.matricule} {detail}",
                 vehicle=v,
             )
 
@@ -71,10 +83,10 @@ def generate_alerts_for_agency(agency, now=None):
             agency,
             created,
             f"VIDANGE:{v.id}:{v.prochain_vidange_km}",
+            "VIDANGE",
+            {"plate": v.matricule, "km": v.kilometrage, "next_km": v.prochain_vidange_km},
             kind="VIDANGE",
             level="CRITICAL" if v.kilometrage >= v.prochain_vidange_km else "WARNING",
-            title=f"Vidange à prévoir - {v.matricule}",
-            message=f"{v.matricule} : {v.kilometrage} km, vidange prévue à {v.prochain_vidange_km} km.",
             vehicle=v,
         )
 
@@ -84,17 +96,21 @@ def generate_alerts_for_agency(agency, now=None):
     for c in active:
         due = c.date_retour_prevue
         key_day = timezone.localtime(due).date().isoformat()
-        who = f"{c.client.prenom} {c.client.nom}"
-        when = f"{timezone.localtime(due):%d/%m/%Y %H:%M}"
+        params = {
+            "plate": c.vehicle.matricule,
+            "contract": c.id,
+            "client": f"{c.client.prenom} {c.client.nom}",
+            "when": f"{timezone.localtime(due):%d/%m/%Y %H:%M}",
+        }
         if due < now:
             _add(
                 agency,
                 created,
                 f"RETURN_OVERDUE:{c.id}:{key_day}",
+                "RETURN_OVERDUE",
+                params,
                 kind="RETURN_OVERDUE",
                 level="CRITICAL",
-                title=f"Retour en retard - {c.vehicle.matricule}",
-                message=f"Contrat #{c.id} ({who}) : retour prévu le {when}.",
                 vehicle=c.vehicle,
                 contract=c,
             )
@@ -103,10 +119,10 @@ def generate_alerts_for_agency(agency, now=None):
                 agency,
                 created,
                 f"RETURN_DUE:{c.id}:{key_day}",
+                "RETURN_DUE",
+                params,
                 kind="RETURN_DUE",
                 level="INFO",
-                title=f"Retour prévu bientôt - {c.vehicle.matricule}",
-                message=f"Contrat #{c.id} ({who}) : retour le {when}.",
                 vehicle=c.vehicle,
                 contract=c,
             )
@@ -153,6 +169,8 @@ def run_alerts(send_email=True, agencies=None):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    title = serializers.SerializerMethodField()
+    message = serializers.SerializerMethodField()
     vehicle_matricule = serializers.CharField(
         source="vehicle.matricule", read_only=True, default=None
     )
@@ -172,6 +190,21 @@ class NotificationSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+    def _rendered(self, obj):
+        """(titre, message) dans la langue de la requête ; repli sur le texte stocké."""
+        lang = lang_from_request(self.context.get("request"))
+        if obj.code and lang != "fr":
+            rendered = render_alert(obj.code, obj.params, lang)
+            if rendered:
+                return rendered
+        return obj.title, obj.message
+
+    def get_title(self, obj):
+        return self._rendered(obj)[0]
+
+    def get_message(self, obj):
+        return self._rendered(obj)[1]
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

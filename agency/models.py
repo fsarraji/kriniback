@@ -208,6 +208,10 @@ class Notification(models.Model):
         blank=True,
         related_name="+",
     )
+    # Code + paramètres : permettent de rendre le texte dans la langue du lecteur
+    # (voir alert_texts.py). Vides pour les anciennes alertes : title/message font foi.
+    code = models.CharField(max_length=30, blank=True, default="")
+    params = models.JSONField(blank=True, default=dict)
     # Clé de déduplication : une même alerte n'est créée qu'une fois.
     dedup_key = models.CharField(max_length=120)
     is_read = models.BooleanField(default=False)
