@@ -33,6 +33,7 @@ from contracts.views import (
     ReservationViewSet,
 )
 from expenses.views import ExpenseViewSet
+from fleet.geofence import GeofenceViewSet
 from fleet.gps_views import (
     GpsCommandsView,
     GpsDeviceAssociateView,
@@ -64,6 +65,7 @@ router.register(r"brands", BrandViewSet, basename="brand")
 router.register(r"modelcars", ModelCarViewSet, basename="modelcar")
 router.register(r"clients", ClientViewSet, basename="client")
 router.register(r"contracts", ContractViewSet, basename="contract")
+router.register(r"geofences", GeofenceViewSet, basename="geofence")
 router.register(r"contract-fees", ContractFeeViewSet, basename="contract-fee")
 router.register(r"contract-photos", ContractPhotoViewSet, basename="contract-photo")
 router.register(r"pdf-jobs", PdfJobViewSet, basename="pdf-job")

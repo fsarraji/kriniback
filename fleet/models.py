@@ -571,3 +571,30 @@ class MaintenanceRecord(models.Model):
 
     def __str__(self):
         return f"{self.get_type_display()} - {self.vehicle_id} - {self.date}"
+
+
+class Geofence(models.Model):
+    """Zone circulaire autorisée pour les véhicules en location (alerte à la sortie)."""
+
+    agency = models.ForeignKey(
+        Agency, on_delete=models.CASCADE, related_name="geofences"
+    )
+    name = models.CharField(max_length=100, verbose_name="Nom de la zone")
+    latitude = models.FloatField(verbose_name="Latitude du centre")
+    longitude = models.FloatField(verbose_name="Longitude du centre")
+    radius_m = models.PositiveIntegerField(verbose_name="Rayon (mètres)")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["name", "id"]
+        indexes = [
+            models.Index(
+                fields=["agency", "is_active"], name="geofence_agency_active_idx"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.radius_m} m)"

@@ -137,6 +137,12 @@ def run_alerts(send_email=True, agencies=None):
     qs = agencies if agencies is not None else Agency.objects.filter(is_active=True)
     for agency in qs:
         created = generate_alerts_for_agency(agency)
+        try:
+            from fleet.geofence import check_geofences
+
+            created = created + check_geofences(agency)
+        except Exception:  # un souci GPS ne doit pas bloquer les alertes classiques
+            logger.exception("geofence_check_failed", extra={"agency_id": agency.id})
         if send_email:
             try:
                 email_digest(agency, created)

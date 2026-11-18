@@ -183,6 +183,7 @@ class Notification(models.Model):
         ("VIDANGE", "Vidange"),
         ("RETURN_DUE", "Retour proche"),
         ("RETURN_OVERDUE", "Retour en retard"),
+        ("GEOFENCE", "Hors zone autorisée"),
     )
     LEVEL_CHOICES = (("INFO", "Info"), ("WARNING", "Attention"), ("CRITICAL", "Urgent"))
 
