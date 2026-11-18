@@ -2,9 +2,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
+from agency.audit import AuditLogView
 from agency.notifications import NotificationViewSet
 from agency.views import AccountMeView  # استدعاء لوحة القيادة
 from agency.views import (
@@ -75,6 +77,18 @@ router.register(r"notifications", NotificationViewSet, basename="notification")
 
 urlpatterns = [
     path("api/health/", include("health.urls")),
+    *(
+        [
+            path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+            path(
+                "api/docs/",
+                SpectacularSwaggerView.as_view(url_name="schema"),
+                name="swagger-ui",
+            ),
+        ]
+        if settings.DEBUG or settings.API_DOCS_ENABLED
+        else []
+    ),
     path("admin/", admin.site.urls),
     # مسارات حساب العميل (Inscription + Profil) — avant le router pour éviter le conflit avec clients/{pk}/
     path("api/clients/register/", ClientRegisterView.as_view(), name="client_register"),
@@ -101,6 +115,7 @@ urlpatterns = [
     path("api/token/blacklist/", TokenBlacklistView.as_view(), name="token_blacklist"),
     # مسار الإحصائيات (Dashboard)
     path("api/dashboard/", DashboardStatsView.as_view(), name="dashboard_stats"),
+    path("api/audit/", AuditLogView.as_view(), name="audit_log"),
     # مسار إعدادات الوكالة (Agency Settings)
     path("api/agency/settings/", AgencySettingsView.as_view(), name="agency_settings"),
     # Suivi GPS (proxy Traccar)

@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     # مكتبات خارجية
     "rest_framework",
     "corsheaders",
+    "drf_spectacular",
+    "simple_history",
     # تطبيقاتنا
     "agency",
     "fleet",
@@ -80,12 +82,14 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "simple_history.middleware.HistoryRequestMiddleware",
 ]
 
 ROOT_URLCONF = "car_rental_backend.urls"
@@ -178,6 +182,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+# collectstatic (build) : les fichiers statiques (admin Django) sont servis par WhiteNoise.
+STATIC_ROOT = BASE_DIR / "staticfiles"
 # Origines autorisées : CORS_ALLOWED_ORIGINS="https://a.com,https://b.com"
 # Par défaut : le front de production (surchargé par la variable d'environnement).
 _DEFAULT_FRONT = ",".join(
@@ -200,6 +206,16 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+    # HSTS : le navigateur n'accepte plus que HTTPS (désactiver avec SECURE_HSTS_SECONDS=0).
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    # Redirection HTTP -> HTTPS : à activer (true) si le proxy transmet X-Forwarded-Proto
+    # et que les health checks passent en HTTPS ; désactivée par défaut pour ne rien casser.
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
 
 # Cache partagé : requis pour que le throttling (et le cache) soit cohérent dès que
 # plusieurs workers/instances tournent. REDIS_URL active Redis ; sinon LocMem
@@ -229,6 +245,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "car_rental_backend.pagination.StandardPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
@@ -236,6 +253,20 @@ REST_FRAMEWORK = {
         "public_write": "20/hour",
         "login": "30/minute",
     },
+}
+
+# Documentation OpenAPI (/api/docs/) : toujours active en DEBUG, opt-in en production.
+API_DOCS_ENABLED = os.getenv("API_DOCS_ENABLED", "false").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Krini API",
+    "DESCRIPTION": "API de gestion de location de voitures (multi-agences).",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 PDF_SERVICE_URL = os.getenv("PDF_SERVICE_URL", "http://localhost:8001")
@@ -319,9 +350,7 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     DEFAULT_FILE_STORAGE = "car_rental_backend.storage.OptimizedS3Storage"
     STORAGES = {
         "default": {"BACKEND": DEFAULT_FILE_STORAGE},
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-        },
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
     }
 
     # Supabase S3 Specifics
@@ -353,7 +382,5 @@ else:
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
     STORAGES = {
         "default": {"BACKEND": "car_rental_backend.storage.OptimizedFileSystemStorage"},
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-        },
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
     }

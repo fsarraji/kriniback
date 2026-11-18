@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Install system dependencies required for WeasyPrint and PostgreSQL
+# Dépendances système (PDF, images, PostgreSQL)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     python3-dev \
@@ -30,6 +30,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Expose port and start Gunicorn (Render injects the port dynamically via $PORT)
-# Optimization for 512MB RAM: Use 1 worker and multiple threads to reduce memory footprint.
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn car_rental_backend.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 4 --timeout 120"]
+# Fichiers statiques (admin Django) servis par WhiteNoise. La clé ci-dessous ne sert
+# qu'au build ; la vraie DJANGO_SECRET_KEY est fournie à l'exécution.
+RUN DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput
+
+# Exécution sans privilèges root
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser /app
+USER appuser
+
+# Les migrations ne tournent plus au démarrage (risque de course avec plusieurs
+# instances) : les lancer comme étape de release (`python manage.py migrate --noinput`).
+# Render injecte le port via $PORT ; 1 worker + threads pour tenir dans 512 Mo de RAM.
+CMD ["sh", "-c", "gunicorn car_rental_backend.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 4 --timeout 120"]

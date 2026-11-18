@@ -282,6 +282,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def confirm(self, request, pk=None):
         """Confirme la réservation et crée un contrat en statut RESERVE."""
         if request.user.role == "CLIENT":
@@ -299,7 +300,16 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
         import math
 
+        from contracts.availability import assert_vehicle_free
         from contracts.models import Contract
+
+        # Verrou + re-contrôle : un contrat créé entre-temps sur ce véhicule bloque la confirmation.
+        assert_vehicle_free(
+            reservation.vehicle,
+            reservation.date_sortie,
+            reservation.date_retour_prevue,
+            exclude_reservation=reservation,
+        )
 
         diff = reservation.date_retour_prevue - reservation.date_sortie
         jours = max(1, math.ceil(diff.total_seconds() / (24 * 3600)))

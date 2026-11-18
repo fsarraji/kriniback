@@ -3,6 +3,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import models
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 from agency.models import Agency, CustomUser
 from car_rental_backend.uploads import pdf_job_upload_to
@@ -247,6 +248,9 @@ class Contract(models.Model):
     def __str__(self):
         return f"عقد رقم {self.id} - {self.client.nom} - {self.vehicle.matricule}"
 
+    # Journal d'audit : qui a modifié quoi, et quand
+    history = HistoricalRecords()
+
     class Meta:
         indexes = [
             models.Index(fields=["statut"], name="contract_statut_idx"),
@@ -379,6 +383,11 @@ class Reservation(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["vehicle", "date_sortie"], name="reservation_vehicle_date_idx"
+            ),
+        ]
 
     def __str__(self):
         return f"Réservation #{self.id} - {self.client.nom} - {self.vehicle.matricule}"

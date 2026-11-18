@@ -181,3 +181,6 @@ mock_final.pdf
 *.backup
 backend_report.md
 contracts_error.txt
+
+# collectstatic
+staticfiles/

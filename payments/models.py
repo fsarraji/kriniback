@@ -1,5 +1,6 @@
 from django.db import models, transaction
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 from agency.models import Agency, CustomUser
 from contracts.models import Contract
@@ -48,6 +49,17 @@ class Payment(models.Model):
     notes = models.TextField(null=True, blank=True, verbose_name="ملاحظات")
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Journal d'audit : qui a modifié quoi, et quand
+    history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["contract"], name="payment_contract_idx"),
+            models.Index(
+                fields=["agency", "payment_date"], name="payment_agency_date_idx"
+            ),
+        ]
 
     def _apply_delta(self, delta):
         """Applique une variation au montant payé du contrat (verrou de ligne)."""

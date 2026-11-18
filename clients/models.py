@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from agency.models import Agency, CustomUser  # استدعاء نموذج الوكالة
 from car_rental_backend.uploads import (
@@ -44,7 +45,6 @@ class Client(models.Model):
     email = models.EmailField(blank=True, null=True, verbose_name="البريد الإلكتروني")
     permis_conduite = models.CharField(
         max_length=50,
-        unique=True,
         null=True,
         blank=True,
         verbose_name="رقم رخصة السياقة",
@@ -100,9 +100,21 @@ class Client(models.Model):
     # Suppression douce (masqué de l'annuaire, restauré par le super admin)
     is_deleted = models.BooleanField(default=False, verbose_name="Supprimé")
 
+    # Journal d'audit : qui a modifié quoi, et quand
+    history = HistoricalRecords()
+
     class Meta:
         # لضمان عدم تكرار رقم البطاقة الوطنية داخل *نفس الوكالة* فقط
         unique_together = ["agency", "cin_passport"]
+        # Permis de conduire : unique au sein d'une même agence uniquement
+        constraints = [
+            models.UniqueConstraint(
+                fields=["agency", "permis_conduite"],
+                condition=models.Q(permis_conduite__isnull=False)
+                & ~models.Q(permis_conduite=""),
+                name="uniq_client_permis_per_agency",
+            )
+        ]
 
     def __str__(self):
         return f"{self.nom} {self.prenom} - {self.cin_passport}"

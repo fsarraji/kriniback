@@ -110,11 +110,21 @@ class ClientRegisterSerializer(serializers.ModelSerializer):
     def validate(self, data):
         cin = (data.get("cin_passport") or "").strip()
         permis = (data.get("permis_conduite") or "").strip()
-        if cin and Client.objects.filter(cin_passport=cin).exists():
+        # Inscription publique : pas d'agence, l'unicité ne porte que sur les
+        # fiches sans agence (l'unicité est par agence, pas globale).
+        if (
+            cin
+            and Client.objects.filter(agency__isnull=True, cin_passport=cin).exists()
+        ):
             raise serializers.ValidationError(
                 {"cin_passport": "Un client avec ce CIN/passeport existe déjà."}
             )
-        if permis and Client.objects.filter(permis_conduite=permis).exists():
+        if (
+            permis
+            and Client.objects.filter(
+                agency__isnull=True, permis_conduite=permis
+            ).exists()
+        ):
             raise serializers.ValidationError(
                 {"permis_conduite": "Un client avec ce permis existe déjà."}
             )

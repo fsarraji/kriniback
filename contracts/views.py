@@ -504,6 +504,26 @@ class ContractViewSet(viewsets.ModelViewSet):
                 agency=self.request.user.agency, created_by=self.request.user
             )
 
+    def perform_update(self, serializer):
+        from .availability import assert_vehicle_free
+
+        instance = serializer.instance
+        data = serializer.validated_data
+        period_changed = any(
+            key in data for key in ("vehicle", "date_sortie", "date_retour_prevue")
+        )
+        with transaction.atomic():
+            if period_changed and instance.statut in ("RESERVE", "EN_COURS"):
+                # Même verrou de ligne qu'à la création : pas de double réservation
+                # lorsqu'on déplace un contrat vers un autre véhicule ou d'autres dates.
+                assert_vehicle_free(
+                    data.get("vehicle", instance.vehicle),
+                    data.get("date_sortie", instance.date_sortie),
+                    data.get("date_retour_prevue", instance.date_retour_prevue),
+                    exclude_contract=instance,
+                )
+            serializer.save()
+
     # مسار مخصص لإغلاق العقد وإرجاع السيارة
     @action(detail=True, methods=["post"])
     @transaction.atomic
@@ -657,6 +677,7 @@ class ContractViewSet(viewsets.ModelViewSet):
 
     # مسار مخصص لتمديد العقد (Prolonger le contrat)
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def prolong(self, request, pk=None):
         contract = self.get_object()
 
@@ -700,33 +721,15 @@ class ContractViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Vérification de disponibilité du véhicule sur la nouvelle période ---
-        from .availability import agency_buffer
+        # --- Disponibilité sur la nouvelle période (verrou de ligne) ---
+        from .availability import assert_vehicle_free
 
-        buffer = agency_buffer(contract.vehicle.agency)
-        overlapping = Contract.objects.filter(
-            vehicle=contract.vehicle,
-            statut__in=["RESERVE", "EN_COURS"],
-            date_sortie__lt=new_retour + buffer,
-            date_retour_prevue__gt=contract.date_sortie - buffer,
-        ).exclude(pk=contract.pk)
-        if overlapping.exists():
-            return Response(
-                {"detail": "هذا الكراء يتعارض مع عقد آخر على نفس السيارة."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        overlapping_res = Reservation.objects.filter(
-            vehicle=contract.vehicle,
-            statut__in=["PENDING", "CONFIRMED"],
-            date_sortie__lt=new_retour + buffer,
-            date_retour_prevue__gt=contract.date_sortie - buffer,
-        ).exists()
-        if overlapping_res:
-            return Response(
-                {"detail": "هذه السيارة لديها حجز في نفس الفترة."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        assert_vehicle_free(
+            contract.vehicle,
+            contract.date_sortie,
+            new_retour,
+            exclude_contract=contract,
+        )
 
         # --- Recalcul de la durée et du montant ---
         diff = new_retour - contract.date_sortie

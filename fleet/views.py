@@ -185,6 +185,13 @@ class VehicleViewSet(viewsets.ModelViewSet):
         """Suppression douce : le véhicule n'est pas supprimé de la base,
         il est masqué de la flotte et pourra être restauré par le super admin."""
         obj = self.get_object()
+        if obj.contracts.filter(statut__in=["RESERVE", "EN_COURS"]).exists():
+            return Response(
+                {
+                    "detail": "Ce véhicule a une location en cours ou une réservation à venir."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         obj.is_deleted = True
         obj.save(update_fields=["is_deleted"])
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -342,7 +349,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
 class VehicleCheckUniqueView(APIView):
     """Vérifie en temps réel (après la saisie) si un matricule est déjà utilisé
-    par un autre véhicule. `exclude_id` permet d'exclure le véhicule courant
+    par un autre véhicule de la même agence. `exclude_id` permet d'exclure le véhicule courant
     lors de l'édition."""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -358,6 +365,8 @@ class VehicleCheckUniqueView(APIView):
             return Response({"available": True, "field": field, "value": value})
 
         qs = Vehicle.objects.all()
+        if not request.user.is_superuser:
+            qs = qs.filter(agency=request.user.agency)
         if exclude_id:
             qs = qs.exclude(pk=exclude_id)
 

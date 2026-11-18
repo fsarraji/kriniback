@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from agency.models import Agency
 from car_rental_backend.uploads import vehicle_image_upload_to
@@ -62,10 +63,9 @@ class Vehicle(models.Model):
     agency = models.ForeignKey(
         Agency, on_delete=models.CASCADE, related_name="vehicles"
     )
-    matricule = models.CharField(max_length=20, unique=True, verbose_name="Matricule")
+    matricule = models.CharField(max_length=20, verbose_name="Matricule")
     matricule_definitif = models.CharField(
         max_length=20,
-        unique=True,
         null=True,
         blank=True,
         verbose_name="Matricule définitif (00000-lettre-00)",
@@ -143,6 +143,28 @@ class Vehicle(models.Model):
     # Suppression douce (masqué de la flotte, restauré par le super admin)
     is_deleted = models.BooleanField(default=False, verbose_name="Supprimé")
 
+    # Journal d'audit : qui a modifié quoi, et quand
+    history = HistoricalRecords()
+
+    class Meta:
+        # Le matricule est unique au sein d'une même agence uniquement
+        constraints = [
+            models.UniqueConstraint(
+                fields=["agency", "matricule"], name="uniq_vehicle_matricule_per_agency"
+            ),
+            models.UniqueConstraint(
+                fields=["agency", "matricule_definitif"],
+                condition=models.Q(matricule_definitif__isnull=False)
+                & ~models.Q(matricule_definitif=""),
+                name="uniq_vehicle_matricule_def_per_agency",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["agency", "statut", "is_deleted"], name="veh_agency_statut_idx"
+            ),
+        ]
+
     @property
     def km_loue_total(self):
         """Nombre total de kilomètres parcourus par les locataires (contrats terminés)."""
@@ -195,7 +217,11 @@ class Vehicle(models.Model):
         if not isinstance(jour, date):
             jour = jour.date()
         best, best_rank, best_prix = None, -1, None
-        for interval in self.price_intervals.all():
+        # `_intervals_cache` est posé par prix_pour_periode : une seule requête pour N jours.
+        intervals = getattr(self, "_intervals_cache", None)
+        if intervals is None:
+            intervals = self.price_intervals.all()
+        for interval in intervals:
             if not interval.contient(jour):
                 continue
             rank = VehiclePriceInterval.TYPE_RANK.get(interval.type, 0)
@@ -228,20 +254,24 @@ class Vehicle(models.Model):
         detail = []
         jours = 0
         day = start
-        while day <= end:
-            interval = self._interval_pour_date(day)
-            prix = interval.prix if interval else self.prix_par_jour
-            total += prix
-            jours += 1
-            if include_detail:
-                detail.append(
-                    {
-                        "date": day.isoformat(),
-                        "prix": str(prix),
-                        "type": interval.type if interval else "DEFAUT",
-                    }
-                )
-            day += timedelta(days=1)
+        self._intervals_cache = list(self.price_intervals.all())
+        try:
+            while day <= end:
+                interval = self._interval_pour_date(day)
+                prix = interval.prix if interval else self.prix_par_jour
+                total += prix
+                jours += 1
+                if include_detail:
+                    detail.append(
+                        {
+                            "date": day.isoformat(),
+                            "prix": str(prix),
+                            "type": interval.type if interval else "DEFAUT",
+                        }
+                    )
+                day += timedelta(days=1)
+        finally:
+            del self._intervals_cache
         prix_moyen = (total / Decimal(jours)) if jours else self.prix_par_jour
         return {
             "total": total,

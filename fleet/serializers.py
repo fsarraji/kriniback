@@ -167,8 +167,30 @@ class VehicleSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["agency", "gps_device"]
 
+    def _check_unique_in_agency(self, field, value):
+        """Unicité du matricule limitée à l'agence de l'utilisateur."""
+        request = self.context.get("request")
+        agency = getattr(getattr(request, "user", None), "agency", None)
+        if not agency:
+            return
+        qs = Vehicle.objects.filter(agency=agency, **{field: value})
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                "Un véhicule avec ce matricule existe déjà dans votre agence."
+            )
+
+    def validate_matricule(self, value):
+        value = (value or "").strip()
+        if value:
+            self._check_unique_in_agency("matricule", value)
+        return value
+
     def validate_matricule_definitif(self, value):
         value = (value or "").strip()
+        if value:
+            self._check_unique_in_agency("matricule_definitif", value)
         return value or None
 
     def get_rating_avg(self, obj):

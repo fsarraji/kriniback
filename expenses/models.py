@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 from agency.models import Agency, CustomUser
 from car_rental_backend.uploads import expense_receipt_upload_to
@@ -52,6 +53,16 @@ class Expense(models.Model):
     notes = models.TextField(null=True, blank=True, verbose_name="ملاحظات")
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Journal d'audit : qui a modifié quoi, et quand
+    history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["agency", "expense_date"], name="expense_agency_date_idx"
+            ),
+        ]
 
     def __str__(self):
         return f"{self.title} - {self.amount} MAD - {self.agency.nom_agence}"

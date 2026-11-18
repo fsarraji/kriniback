@@ -62,6 +62,13 @@ class ClientViewSet(viewsets.ModelViewSet):
         """Suppression douce : le client n'est pas supprimé de la base,
         il est masqué de l'annuaire et pourra être restauré par le super admin."""
         obj = self.get_object()
+        if obj.contracts.filter(statut__in=["RESERVE", "EN_COURS"]).exists():
+            return Response(
+                {
+                    "detail": "Ce client a une location en cours ou une réservation à venir."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         obj.is_deleted = True
         obj.save(update_fields=["is_deleted"])
         return Response(status=status.HTTP_204_NO_CONTENT)
