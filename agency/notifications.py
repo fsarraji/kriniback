@@ -10,6 +10,7 @@ from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from car_rental_backend.permissions import IsAgencyStaff
 from contracts.models import Contract
 from fleet.models import Vehicle
 
@@ -84,7 +85,11 @@ def generate_alerts_for_agency(agency, now=None):
             created,
             f"VIDANGE:{v.id}:{v.prochain_vidange_km}",
             "VIDANGE",
-            {"plate": v.matricule, "km": v.kilometrage, "next_km": v.prochain_vidange_km},
+            {
+                "plate": v.matricule,
+                "km": v.kilometrage,
+                "next_km": v.prochain_vidange_km,
+            },
             kind="VIDANGE",
             level="CRITICAL" if v.kilometrage >= v.prochain_vidange_km else "WARNING",
             vehicle=v,
@@ -209,7 +214,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAgencyStaff]
     filterset_fields = ["kind", "level", "is_read"]
 
     def get_queryset(self):

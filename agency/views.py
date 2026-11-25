@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from car_rental_backend.permissions import IsSuperUser
+from car_rental_backend.permissions import IsAgencyStaff, IsSuperUser
 from clients.models import Client
 from contracts.models import Contract
 from fleet.models import Brand, Vehicle
@@ -173,7 +173,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class DashboardStatsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAgencyStaff]
 
     def get(self, request):
         agency = request.user.agency
@@ -309,7 +309,7 @@ def _agency_settings_payload(agency, request):
 
 
 class AgencySettingsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAgencyStaff]
 
     def get(self, request):
         if not request.user.agency:

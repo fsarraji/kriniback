@@ -3,13 +3,15 @@ from rest_framework import permissions, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 
+from car_rental_backend.permissions import IsAgencyStaff
+
 from .models import Expense
 from .serializers import ExpenseSerializer
 
 
 class ExpenseViewSet(viewsets.ModelViewSet):
     serializer_class = ExpenseSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAgencyStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["vehicle", "category"]
     search_fields = ["title", "notes"]

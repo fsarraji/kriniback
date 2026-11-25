@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from car_rental_backend.permissions import IsAgencyStaff
 from contracts.availability import agency_buffer, max_buffer
 from contracts.models import Contract, Reservation
 
@@ -103,7 +104,7 @@ def _push_kilometrage_to_traccar(vehicle, agency):
 
 class VehicleViewSet(viewsets.ModelViewSet):
     serializer_class = VehicleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAgencyStaff]
 
     filter_backends = [
         DjangoFilterBackend,

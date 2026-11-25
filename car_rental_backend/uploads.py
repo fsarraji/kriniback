@@ -96,3 +96,11 @@ def contract_photo_upload_to(instance, filename):
 
     ext = os.path.splitext(filename or "")[1].lower()[:6] or ".jpg"
     return f"{agency_segment(instance)}/contract_photos/{uuid.uuid4().hex}{ext}"
+
+
+def contract_signed_upload_to(instance, filename):
+    """Contrat signé en transit vers NARSA : nom aléatoire, supprimé après la déclaration."""
+    import uuid
+
+    ext = os.path.splitext(filename or "")[1].lower()[:6] or ".pdf"
+    return f"{agency_segment(instance)}/narsa_pending/{uuid.uuid4().hex}{ext}"

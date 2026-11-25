@@ -58,6 +58,41 @@ class Client(models.Model):
     )
     pays = models.CharField(max_length=100, blank=True, null=True, verbose_name="Pays")
 
+    # --- Données exigées par le portail NARSA (déclaration du conducteur) ---
+    DOC_TYPE_CHOICES = (
+        ("CIN", "Carte d'identité nationale"),
+        ("SEJOUR", "Carte de séjour"),
+        ("PASSEPORT", "Passeport"),
+    )
+    nom_ar = models.CharField(
+        max_length=50, blank=True, default="", verbose_name="الاسم العائلي (عربية)"
+    )
+    prenom_ar = models.CharField(
+        max_length=50, blank=True, default="", verbose_name="الاسم الشخصي (عربية)"
+    )
+    adresse_ar = models.TextField(
+        blank=True, default="", verbose_name="العنوان (عربية)"
+    )
+    type_document = models.CharField(
+        max_length=10,
+        choices=DOC_TYPE_CHOICES,
+        blank=True,
+        default="",
+        verbose_name="نوع الوثيقة",
+    )
+    permis_etranger = models.BooleanField(default=False, verbose_name="رخصة أجنبية")
+    adresse_etrangere = models.BooleanField(default=False, verbose_name="عنوان أجنبي")
+    # « Ville - BUREAU POSTAL (code) » exactement comme proposé par NARSA ; le code postal en est extrait.
+    localite_narsa = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        verbose_name="Province - Localité (NARSA)",
+    )
+    code_postal = models.CharField(
+        max_length=10, blank=True, default="", verbose_name="Code postal"
+    )
+
     # إضافات حديثة
     liste_noire = models.BooleanField(default=False, verbose_name="في القائمة السوداء؟")
     remarques = models.TextField(

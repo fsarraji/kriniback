@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     "fleet",
     "clients",
     "contracts",
+    "infractions",
     "payments",
     "expenses",
     "health",
