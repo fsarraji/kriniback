@@ -467,10 +467,7 @@ def process_pdf_job(job_id):
 
 class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
-    # Personnel d'agence uniquement : un compte CLIENT (même rattaché à une agence)
-    # ne doit ni lister ni modifier les contrats de l'agence. Son espace passe par
-    # /api/clients/me/contracts/.
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     filter_backends = [
         DjangoFilterBackend,
@@ -850,7 +847,7 @@ class ContractViewSet(viewsets.ModelViewSet):
 
 class PdfJobViewSet(viewsets.ModelViewSet):
     serializer_class = PdfJobSerializer
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return PdfJob.objects.filter(

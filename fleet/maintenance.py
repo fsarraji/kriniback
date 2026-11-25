@@ -3,7 +3,7 @@ from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, serializers, viewsets
 
-from car_rental_backend.permissions import IsAgencyStaff, check_same_agency
+from car_rental_backend.permissions import check_same_agency
 
 from .models import MaintenanceRecord
 
@@ -76,7 +76,7 @@ class MaintenanceRecordSerializer(serializers.ModelSerializer):
 
 class MaintenanceRecordViewSet(viewsets.ModelViewSet):
     serializer_class = MaintenanceRecordSerializer
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

@@ -11,8 +11,6 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from car_rental_backend.permissions import IsAgencyStaff
-
 from .models import GpsDevice, Vehicle
 from .serializers import VehicleSerializer
 from .traccar import (
@@ -141,7 +139,7 @@ def _sync_kilometrage(vehicle, position):
 
 
 class GpsPositionsView(APIView):
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         vehicles = _scoped_vehicles(request)
@@ -170,7 +168,7 @@ class GpsPositionsView(APIView):
 
 
 class GpsVehiclePositionView(APIView):
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         vehicle = _scoped_vehicles(request).filter(pk=pk).first()
@@ -190,7 +188,7 @@ class GpsVehiclePositionView(APIView):
 class GpsDevicesView(APIView):
     """Dispositifs Traccar : liste (GET), création (POST) et suppression (DELETE)."""
 
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def _devices_with_vehicles(self, request):
         """Dispositifs Traccar enrichis du véhicule auquel chacun est associé."""
@@ -322,7 +320,7 @@ class GpsDeviceAssociateView(APIView):
     - POST {"dissociate_all": true}              → dissocier tous les dispositifs des véhicules
     """
 
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         data = request.data or {}
@@ -399,7 +397,7 @@ class GpsDeviceAssociateView(APIView):
 
 
 class GpsHistoryView(APIView):
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         vehicle_id = request.query_params.get("vehicle_id")
@@ -460,7 +458,7 @@ class GpsSetOdometerView(APIView):
     automatiquement. Met à jour la dernière position du dispositif.
     """
 
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         data = request.data or {}
@@ -570,7 +568,7 @@ class GpsCommandsView(APIView):
     - POST /api/gps/commands/                → {vehicle_id, type, attributes?}
     """
 
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     def _vehicle(self, request, vehicle_id):
         vehicle = _scoped_vehicles(request).filter(pk=vehicle_id).first()

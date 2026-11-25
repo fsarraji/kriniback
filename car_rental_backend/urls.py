@@ -18,7 +18,6 @@ from agency.views import (
     SubscriptionViewSet,
     UserViewSet,
 )
-from clients.portal import ClientContractDetailView, ClientContractListView
 from clients.views import (
     ClientAccountView,
     ClientCheckUniqueView,
@@ -52,7 +51,6 @@ from fleet.views import (
     VehicleCheckUniqueView,
     VehicleViewSet,
 )
-from infractions.views import InfractionViewSet
 from payments.invoicing import CreditNoteViewSet, InvoiceViewSet
 from payments.reports import ReportViewSet
 from payments.views import PaymentViewSet
@@ -82,7 +80,6 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"credit-notes", CreditNoteViewSet, basename="credit-note")
 router.register(r"maintenance", MaintenanceRecordViewSet, basename="maintenance")
 router.register(r"notifications", NotificationViewSet, basename="notification")
-router.register(r"infractions", InfractionViewSet, basename="infraction")
 
 urlpatterns = [
     path("api/health/", include("health.urls")),
@@ -102,16 +99,6 @@ urlpatterns = [
     # مسارات حساب العميل (Inscription + Profil) — avant le router pour éviter le conflit avec clients/{pk}/
     path("api/clients/register/", ClientRegisterView.as_view(), name="client_register"),
     path("api/clients/me/", ClientAccountView.as_view(), name="client_me"),
-    path(
-        "api/clients/me/contracts/",
-        ClientContractListView.as_view(),
-        name="client_me_contracts",
-    ),
-    path(
-        "api/clients/me/contracts/<int:pk>/",
-        ClientContractDetailView.as_view(),
-        name="client_me_contract_detail",
-    ),
     path(
         "api/clients/check-unique/",
         ClientCheckUniqueView.as_view(),

@@ -5,8 +5,6 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from car_rental_backend.permissions import IsAgencyStaff
-
 from .models import BookingRequest, Reservation, _release_vehicle
 from .serializers import BookingRequestSerializer, ReservationSerializer
 
@@ -34,7 +32,7 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == "create":
             return [permissions.AllowAny()]
-        return [IsAgencyStaff()]
+        return [permissions.IsAuthenticated()]
 
     def get_throttles(self):
         # Seule la création publique (anti-spam) est limitée : le personnel authentifié

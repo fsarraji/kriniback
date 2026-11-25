@@ -4,7 +4,6 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from car_rental_backend.permissions import IsAgencyStaff
 from contracts.models import Contract
 
 from .models import Client
@@ -17,7 +16,7 @@ from .serializers import (
 
 class ClientViewSet(viewsets.ModelViewSet):
     serializer_class = ClientSerializer
-    permission_classes = [IsAgencyStaff]
+    permission_classes = [permissions.IsAuthenticated]
 
     # إضافة محركات البحث والفلترة
     filter_backends = [
